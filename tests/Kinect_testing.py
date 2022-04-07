@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import time
 import datetime
+from os.path import exists
+from os import remove
 
 from pykinect2 import PyKinectV2
 from pykinect2 import PyKinectRuntime
@@ -10,21 +12,24 @@ from pykinect2 import PyKinectRuntime
 operating_mode = 'Save'
 
 # Chose how many frames per second should be recorded
-operating_fps = 10
+operating_fps = 30
 
 # Video saving parameters
-frame_codec = cv2.VideoWriter_fourcc('D', 'I', 'V', 'X')
+file_extension = ".avi"
+frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
-# Debug mode (Shows actual fps)
+# Debug mode
 debug_mode = False
-
-# Frame sizes (Not rescaling!)
-color_frame_size = (1080, 1920)
-depth_frame_size = (424, 512)
 
 
 def read_frames(desired_fps):
     kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth)
+
+    # Frame sizes (Not rescaling!)
+    color_frame_size = (1080, 1920)
+    depth_frame_size = (424, 512)
+
+    # Framerate timing for getting information from Kinect
     start_time = time.time()
     old_time = 0
     i = 0
@@ -94,9 +99,17 @@ def read_frames(desired_fps):
 
 
 def save_frames(file_name, desired_fps):
-    kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth)
-    video_bgr = cv2.VideoWriter('bgr'+file_name+'.avi', frame_codec, desired_fps, color_frame_size, True)
-    video_depth = cv2.VideoWriter('depth'+file_name+'.avi', frame_codec, desired_fps, depth_frame_size, False)
+    kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
+
+    # Frame sizes (Not rescaling!)
+    color_frame_size = (1080, 1920)
+    depth_frame_size = (424, 512)
+
+    # Initialise video writers
+    video_bgr = cv2.VideoWriter('bgr_'+file_name, frame_codec, float(desired_fps), (1920, 1080))
+    video_depth = cv2.VideoWriter('depth_'+file_name, frame_codec, float(desired_fps), (512, 424), False)
+
+    # Framerate timing for getting information from Kinect
     start_time = time.time()
     old_time = 0
     i = 0
@@ -134,7 +147,7 @@ def save_frames(file_name, desired_fps):
                 # reformat the other depth frame format for it to be displayed on screen
                 depthframe = depthframe.astype(np.uint8)
                 depthframe = np.reshape(depthframe, depth_frame_size)
-                depthframe = cv2.cvtColor(depthframe, cv2.COLOR_GRAY2RGB)
+                #depthframe = cv2.cvtColor(depthframe, cv2.COLOR_GRAY2RGB)
 
                 # Reslice to remove every 4th colour value, which is superfluous
                 colourframe = np.reshape(colourframe, (2073600, 4))
@@ -149,15 +162,18 @@ def save_frames(file_name, desired_fps):
                 colourframeB = np.reshape(colourframeB, color_frame_size)
                 framefullcolour = cv2.merge([colourframeR, colourframeG, colourframeB])
 
-                # Show colour frames as they are recorded
-                cv2.imshow('Recording KINECT Video Stream COLOUR', framefullcolour)
-
                 # Show depth frames as they are recorded
                 cv2.imshow('Recording KINECT Video Stream DEPTH', depthframe)
 
+                # Show colour frames as they are recorded
+                cv2.imshow('Recording KINECT Video Stream COLOUR', framefullcolour)
+
                 # Save frames to file
+                cv2.imwrite('video_dump/image.png', framefullcolour)
                 video_bgr.write(framefullcolour)
                 video_depth.write(depthframe)
+                if debug_mode:
+                    print('frame ' + str(i) + ' saved')
 
                 i = i + 1
 
@@ -165,6 +181,8 @@ def save_frames(file_name, desired_fps):
         if cv2.waitKey(1) == ord('q'):
             break
     cv2.destroyAllWindows()
+    video_bgr.release()
+    video_depth.release()
 
     return
 
@@ -178,6 +196,16 @@ if __name__ == "__main__":
     if operating_mode == 'Save':
         # Read, show and save frames from Kinect
         current_date = datetime.datetime.now()
-        custom_name = input("Enter a file name: ")
-        full_file_name = custom_name+"."+str(current_date.month)+"."+str(current_date.day)+"."+str(current_date.hour)+"."+str(current_date.minute)
+        if not debug_mode:
+            custom_name = input("Enter a file name: ")
+            full_file_name = custom_name+"."+str(current_date.month)+"."+str(current_date.day)+"."+str(current_date.hour)+"."+str(current_date.minute)+file_extension
+        else:
+            full_file_name = 'debug'+file_extension
+            if exists('bgr_' + full_file_name):
+                remove('bgr_' + full_file_name)
+                print('removed old test bgr file')
+            if exists('depth_' + full_file_name):
+                remove('depth_' + full_file_name)
+                print('removed old test depth file')
+
         save_frames(full_file_name, operating_fps)
