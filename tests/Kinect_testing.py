@@ -169,7 +169,6 @@ def save_frames(file_name, desired_fps):
                 cv2.imshow('Recording KINECT Video Stream COLOUR', framefullcolour)
 
                 # Save frames to file
-                cv2.imwrite('video_dump/image.png', framefullcolour)
                 video_bgr.write(framefullcolour)
                 video_depth.write(depthframe)
                 if debug_mode:
