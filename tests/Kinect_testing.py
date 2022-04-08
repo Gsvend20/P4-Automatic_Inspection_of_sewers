@@ -15,8 +15,8 @@ operating_mode = 'Save'
 operating_fps = 30
 
 # Scaling factors for depth and ir pixel values
-depth_value_scale = 256/8192  # 8191 is maximum depth pixel value and each value maps to 1mm
-ir_value_scale = 256/65536 #65535 is maximum value
+depth_value_scale = 3*256/8192  # 8191 is maximum depth pixel value and each value maps to 1mm
+ir_value_scale = 256/65536  # 65535 is maximum value
 
 # Video saving parameters
 file_extension = ".avi"
@@ -75,8 +75,19 @@ def read_frames(desired_fps):
                 depthframe = np.reshape(depthframe, depth_frame_size)
                 depthframe = depthframe * depth_value_scale
 
+                # Segment depth image into
+                depth_segmentation_value = int(depth_value_scale * 8192 / 3)
+                depthframeB = np.where(depthframe > 2 * depth_segmentation_value - 1, cv2.subtract(depthframe, 2 * depth_segmentation_value), np.zeros_like(depthframe))
+                depthframe = np.where(depthframe > 2 * depth_segmentation_value - 1, np.zeros_like(depthframe), depthframe)
+                depthframeG = np.where(depthframe > depth_segmentation_value - 1, cv2.subtract(depthframe, depth_segmentation_value), np.zeros_like(depthframe))
+                depthframeR = np.where(depthframe > depth_segmentation_value - 1, np.zeros_like(depthframe), depthframe)
+                depthframe = cv2.merge([depthframeB, depthframeG, depthframeR])
+                depthframe = depthframe.astype(np.uint8)
+
                 # Reshape ir data to frame format
                 irframe = np.reshape(irframe, ir_frame_size)
+                irframe = irframe * ir_value_scale
+                irframe = irframe.astype(np.uint8)
 
                 # Reslice to remove every 4th colour value, which is superfluous
                 colourframe = np.reshape(colourframe, (2073600, 4))
@@ -120,7 +131,7 @@ def save_frames(file_name, desired_fps):
 
     # Initialise video writers
     video_bgr = cv2.VideoWriter(save_location+'bgr_'+file_name, frame_codec, float(desired_fps), (1920, 1080))
-    video_depth = cv2.VideoWriter(save_location+'depth_'+file_name, frame_codec, float(desired_fps), (512, 424), False)
+    video_depth = cv2.VideoWriter(save_location+'depth_'+file_name, frame_codec, float(desired_fps), (512, 424))
     video_ir = cv2.VideoWriter(save_location+'ir_' + file_name, frame_codec, float(desired_fps), (512, 424), False)
 
     # Framerate timing for getting information from Kinect
@@ -162,6 +173,14 @@ def save_frames(file_name, desired_fps):
                 # reformat the other depth frame format for it to be displayed on screen
                 depthframe = np.reshape(depthframe, depth_frame_size)
                 depthframe = depthframe * depth_value_scale
+
+                # Segment depth image into
+                depth_segmentation_value = int(depth_value_scale * 8192 / 3)
+                depthframeB = np.where(depthframe > 2 * depth_segmentation_value - 1, cv2.subtract(depthframe, 2 * depth_segmentation_value), np.zeros_like(depthframe))
+                depthframe = np.where(depthframe > 2 * depth_segmentation_value - 1, np.zeros_like(depthframe), depthframe)
+                depthframeG = np.where(depthframe > depth_segmentation_value - 1, cv2.subtract(depthframe, depth_segmentation_value), np.zeros_like(depthframe))
+                depthframeR = np.where(depthframe > depth_segmentation_value - 1, np.zeros_like(depthframe), depthframe)
+                depthframe = cv2.merge([depthframeB, depthframeG, depthframeR])
                 depthframe = depthframe.astype(np.uint8)
 
                 # Reshape ir data to frame format
@@ -216,6 +235,7 @@ if __name__ == "__main__":
         if operating_mode == 'Read':
             # Read and show frames from Kinect
             read_frames(operating_fps)
+            exit(0)
 
         if operating_mode == 'Save':
             # Read, show and save frames from Kinect
