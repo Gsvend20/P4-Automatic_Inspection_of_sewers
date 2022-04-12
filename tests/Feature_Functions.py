@@ -1,9 +1,6 @@
-from __future__ import print_function
 import cv2 as cv
 import pathlib
 import numpy as np
-
-# --- To stop program press q ---
 
 # Select picture path from .../P4-Automatic_Inspection_of_sewers/ directory
 picPath = '/materials/GR-type_0_2.jpg'
@@ -20,16 +17,32 @@ def find_compactness(area, width, height):
 
 
 def find_elongation(cnt):
-    (x, y), (width, height), angle = minAreaRect(cnt)
+    (x, y), (width, height), angle = cv.minAreaRect(cnt)
     elongation = min(width, height) / max(width, height)
     return elongation
 
 def find_ferets(cnt):
-    (x, y), (width, height), angle = minAreaRect(cnt)
+    (x, y), (width, height), angle = cv.minAreaRect(cnt)
     if width >= height:
         return width
     else:
         return height
+
+def find_intensity(cnt, gray_img):
+    mask = np.zeros(gray_img.shape, np.uint8)
+    cv.drawContours(mask, [cnt], 0, 255, -1)
+    mean_val = cv.mean(gray_img, mask=mask)
+    return mean_val
+
+# Simple version of thinness
+def find_thinness(cnt):
+    # compute the area of the contour along with the bounding box
+    # to compute the aspect ratio
+    area = cv.contourArea(cnt)
+    circum = cv.arcLength(cnt, True)
+
+    thinness = (4 * np.pi * area) / (circum**2)
+    return thinness
 
 cnt = 'This is your contour'
 
