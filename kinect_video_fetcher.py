@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import time
+from os.path import exists
 
 # import pykinect2.PyKinectRuntime
 from pykinect2 import PyKinectV2
@@ -106,18 +107,31 @@ class KinectFrameHandler:
 
     # Function to initialise video writers
     def start_saving(self, save_path):
-        # TODO: make new name index every time
+        string_end = ['_bgr.avi', '_depth.avi', '_ir.avi']
+
+        # Generate new number for each file
+        for i in range(1, 1000):
+            used_index = 0
+            for j in range(0, 3):
+                if exists(save_path + str(i) + string_end[j]):
+                    used_index += 1
+                    break
+            if used_index == 0:
+                file_number = str(i)
+                break
+            if i == 1000:
+                exit('Too many videos in folder')
 
         # Initialise video writers
-        self._video_color.open(save_path + '_bgr.avi',
+        self._video_color.open(save_path + file_number + string_end[0],
                                self._frame_codec,
                                float(self.kinect_fps_limit),
                                self._color_frame_size)
-        self._video_depth.open(save_path + '_depth.avi',
+        self._video_depth.open(save_path + file_number + string_end[1],
                                self._frame_codec,
                                float(self.kinect_fps_limit),
                                self._depth_frame_size)
-        self._video_ir.open(save_path + '_ir.avi',
+        self._video_ir.open(save_path + file_number + string_end[2],
                             self._frame_codec,
                             float(self.kinect_fps_limit),
                             self._ir_frame_size)
