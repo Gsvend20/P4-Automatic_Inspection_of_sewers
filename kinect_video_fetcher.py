@@ -9,9 +9,6 @@ from pykinect2 import PyKinectRuntime
 
 kinect_runtime = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
 
-# Chose how many frames per second should be recorded
-operating_fps = 30
-
 # Debug mode
 debug_mode = False
 
@@ -179,6 +176,12 @@ class KinectFrameHandler:
 
     # Function for showing one frame from each current video feed
     def show_frames(self):
+        # Resizing image for better preview
+        color_frame = cv2.resize(self.color_frame, (int(self._color_frame_size[0]/2), int(self._color_frame_size[1]/2)))
+
+        # Show colour frames as they are recorded
+        cv2.imshow('KINECT color channel', color_frame)
+
         # Scaling depth data for easier visualisation
         depth_segmentation_value = 256  # maximum value for each channel
 
@@ -192,9 +195,6 @@ class KinectFrameHandler:
         depth_frame_r = np.where(depth_frame > depth_segmentation_value - 1, np.zeros_like(depth_frame), depth_frame)
         depth_frame_color = cv2.merge([depth_frame_b, depth_frame_g, depth_frame_r])
         depth_frame_color = depth_frame_color.astype(np.uint8)
-
-        # Show colour frames as they are recorded
-        cv2.imshow('KINECT color channel', self.color_frame)
 
         # Show depth frames as they are recorded
         cv2.imshow('KINECT depth channel', depth_frame_color)
