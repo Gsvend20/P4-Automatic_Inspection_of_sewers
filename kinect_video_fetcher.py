@@ -99,34 +99,39 @@ class KinectFrameHandler:
         color_frame_g = np.reshape(color_frame_g, self._color_frame_size)
         color_frame_r = color_frame[:, 2]
         color_frame_r = np.reshape(color_frame_r, self._color_frame_size)
-        self.color_frame = cv2.merge([color_frame_b, color_frame_g, color_frame_r])
+        color_frame = cv2.merge([color_frame_b, color_frame_g, color_frame_r])
+        self.color_frame = cv2.rotate(color_frame, cv2.ROTATE_90_CLOCKWISE)
 
         # Reformat the depth frame format to be a 424 by 512 image of bit depth 16
         depth_frame = np.reshape(self.depth_frame, self._depth_frame_size)
-        self.depth_frame = depth_frame.astype(np.uint16)
+        depth_frame = depth_frame.astype(np.uint16)
+        self.depth_frame = cv2.rotate(depth_frame, cv2.ROTATE_90_CLOCKWISE)
 
         # Reformat the ir frame format to be a 424 by 512 image of bit depth 16
         ir_frame = np.reshape(self.ir_frame, self._ir_frame_size)
-        self.ir_frame = ir_frame.astype(np.uint16)  # TODO: is this even possible? or necessary?
+        ir_frame = ir_frame.astype(np.uint16)
+        self.ir_frame = cv2.rotate(ir_frame, cv2.ROTATE_90_CLOCKWISE)
 
-        # TODO: Rotate all frames
         return color_frame, depth_frame, ir_frame
 
     # Function to initialise video writers
     def start_saving(self, save_path):
+        # TODO: make new name index every time
+
         # Initialise video writers
         self._video_color.open(save_path + '_bgr.avi',
                                self._frame_codec,
                                float(self.kinect_fps_limit),
-                               (1920, 1080))
+                               self._color_frame_size)
         self._video_depth.open(save_path + '_depth.avi',
                                self._frame_codec,
                                float(self.kinect_fps_limit),
-                               (512, 424))
+                               self._depth_frame_size)
         self._video_ir.open(save_path + '_ir.avi',
                             self._frame_codec,
                             float(self.kinect_fps_limit),
-                            (512, 424))
+                            self._ir_frame_size)
+
         return
 
     # Function to save current frame to video stream
@@ -152,11 +157,12 @@ class KinectFrameHandler:
         split_ir_frame = cv2.merge([ir_hi_bytes, ir_lo_bytes, np.zeros_like(ir_hi_bytes)])
 
         # NOTICE: To unpack this into original frame do as follows
-        # depth_hi_bytes, depth_lo_bytes, empty = cv2.split(split_depth_frame)
-        # depth_frame = depth_lo_bytes.astype('uint16') + np.left_shift(depth_hi_bytes.astype('uint16'), 8)
+        # ir_hi_bytes, ir_lo_bytes, empty = cv2.split(split_ir_frame)
+        # ir_frame = ir_lo_bytes.astype('uint16') + np.left_shift(ir_hi_bytes.astype('uint16'), 8)
 
         # Save ir frame
         self._video_ir.write(split_ir_frame)
+
         return
 
     # Function to stop video saving
@@ -164,6 +170,7 @@ class KinectFrameHandler:
         self._video_color.release()
         self._video_depth.release()
         self._video_ir.release()
+
         return
 
     # Function for showing one frame from each current video feed
@@ -190,6 +197,7 @@ class KinectFrameHandler:
 
         # Show depth frames as they are recorded
         cv2.imshow('KINECT ir channel', self.ir_frame)
+
         return
 
 
