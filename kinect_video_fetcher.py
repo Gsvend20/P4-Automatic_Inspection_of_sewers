@@ -21,12 +21,6 @@ operating_fps = 30
 # depth_value_scale = 3*256/8192  # 8191 is maximum depth pixel value and each value maps to 1mm
 # ir_value_scale = 256/65536  # 65535 is maximum value
 
-# Video saving parameters
-file_extension = ".avi"
-save_location = "video_dump/"
-# working video encoder
-frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-
 # Debug mode
 debug_mode = False
 
@@ -43,17 +37,20 @@ class KinectFrameHandler:
         self.depth_frame = np.zeros(self._depth_frame_size)
         self.ir_frame = np.zeros(self._ir_frame_size)
 
-        # Declare video writers
-        self.video_bgr = cv2.VideoWriter
-        self.video_depth = cv2.VideoWriter
-        self.video_ir = cv2.VideoWriter
-
         # Frame-rate timing for getting data from Kinect
         self.kinect_fps_limit = kinect_desired_fps
         self._start_time = time.time()
         self._old_time = 0
         self._time_index = 0
         self._fps_max, self._fps_min = 0, 100
+
+        # Video codec (works for 8 bit)
+        self._frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+
+        # Initialise video writers
+        self._video_color = cv2.VideoWriter()
+        self._video_depth = cv2.VideoWriter()
+        self._video_ir = cv2.VideoWriter()
 
     # Function to fetch one frame from each feed, frames are saved in class variables
     def fetch_frames(self, kinect_runtime_object):
@@ -65,7 +62,7 @@ class KinectFrameHandler:
             if elapsed_time > self._time_index / self.kinect_fps_limit:
 
                 if debug_mode:
-                    if self._time_index > 10:  # Only for high time index try evalutaing FPS or else divide by 0 errors
+                    if self._time_index > 10:  # Only for high time index try evaluating FPS or else divide by 0 errors
                         try:
                             fps = 1 / (elapsed_time - self._old_time)
                             print(fps)
@@ -89,6 +86,7 @@ class KinectFrameHandler:
 
         return
 
+    # Function to transform data from kinect to viewable frames
     def format_frames(self):
         # Re-slice color frame to remove superfluous value at every 4th index
         color_frame = np.reshape(self.color_frame, (2073600, 4))
@@ -114,23 +112,58 @@ class KinectFrameHandler:
         # TODO: Rotate all frames
         return color_frame, depth_frame, ir_frame
 
-    # Function to start up video saving
-    def open_save_location(self, save_path, frame_codec):
+    # Function to initialise video writers
+    def start_saving(self, save_path):
         # Initialise video writers
-        self.video_bgr.open(save_path + '_bgr', frame_codec, float(self.kinect_fps_limit), (1920, 1080))
-        self.video_depth.open(save_path + '_depth', frame_codec, float(self.kinect_fps_limit), (512, 424))
-        self.video_ir.open(save_path + '_ir', frame_codec, float(self.kinect_fps_limit), (512, 424), False)
+        self._video_color.open(save_path + '_bgr.avi',
+                               self._frame_codec,
+                               float(self.kinect_fps_limit),
+                               (1920, 1080))
+        self._video_depth.open(save_path + '_depth.avi',
+                               self._frame_codec,
+                               float(self.kinect_fps_limit),
+                               (512, 424))
+        self._video_ir.open(save_path + '_ir.avi',
+                            self._frame_codec,
+                            float(self.kinect_fps_limit),
+                            (512, 424))
+        return
+
+    # Function to save current frame to video stream
+    def save_frames(self):
+        # Save color frame
+        self._video_color.write(self.color_frame)
+
+        # Prepare depth frame for encoding
+        depth_hi_bytes = np.right_shift(self.depth_frame, 8).astype('uint8')
+        depth_lo_bytes = self.depth_frame.astype('uint8')
+        split_depth_frame = cv2.merge([depth_hi_bytes, depth_lo_bytes, np.zeros_like(depth_hi_bytes)])
+
+        # NOTICE: To unpack this into original frame do as follows
+        # depth_hi_bytes, depth_lo_bytes, empty = cv2.split(split_depth_frame)
+        # depth_frame = depth_lo_bytes.astype('uint16') + np.left_shift(depth_hi_bytes.astype('uint16'), 8)
+
+        # Save depth frame
+        self._video_depth.write(split_depth_frame)
+
+        # Prepare depth frame for encoding
+        ir_hi_bytes = np.right_shift(self.ir_frame, 8).astype('uint8')
+        ir_lo_bytes = self.ir_frame.astype('uint8')
+        split_ir_frame = cv2.merge([ir_hi_bytes, ir_lo_bytes, np.zeros_like(ir_hi_bytes)])
+
+        # NOTICE: To unpack this into original frame do as follows
+        # depth_hi_bytes, depth_lo_bytes, empty = cv2.split(split_depth_frame)
+        # depth_frame = depth_lo_bytes.astype('uint16') + np.left_shift(depth_hi_bytes.astype('uint16'), 8)
+
+        # Save ir frame
+        self._video_ir.write(split_ir_frame)
         return
 
     # Function to stop video saving
-    def release_save_location(self):
-        self.video_bgr.release()
-        self.video_depth.release()
-        self.video_ir.release()
-        return
-
-    def save_frames(self):
-
+    def stop_saving(self):
+        self._video_color.release()
+        self._video_depth.release()
+        self._video_ir.release()
         return
 
     # Function for showing one frame from each current video feed
@@ -369,40 +402,22 @@ def save_frames(file_name, desired_fps):
 
 
 if __name__ == "__main__":
-    #kinect_runtime = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
-    kinect = KinectFrameHandler(30)  # Initialise class
+    # Select path for video saving
+    path = 'sewer recordings/'
 
+    # Initialise frame handling object
+    kinect = KinectFrameHandler(30)
+    kinect.start_saving(path)
+
+    # Main recording loop
     while True:
         if kinect_runtime.has_new_color_frame() and kinect_runtime.has_new_depth_frame():
             kinect.fetch_frames(kinect_runtime)
             kinect.format_frames()
             kinect.show_frames()
+            kinect.save_frames()
 
-        if cv2.waitKey(1) == ord('p'):
+        # End program if the q key is pressed
+        if cv2.waitKey(1) == ord('q'):
+            kinect.stop_saving()
             break
-
-        #if operating_mode == 'Read':
-        #    # Read and show frames from Kinect
-        #    read_frames(operating_fps)
-        #    exit(0)
-        #
-        #if operating_mode == 'Save':
-        #    # Read, show and save frames from Kinect
-        #    current_date = datetime.datetime.now()
-        #    if not debug_mode:
-        #        custom_name = input("Enter a file name: ")
-        #        full_file_name = custom_name + "." + str(current_date.month) + "." + str(current_date.day) + "." + str(
-        #            current_date.hour) + "." + str(current_date.minute) + file_extension
-        #    else:
-        #        full_file_name = 'debug' + file_extension
-        #        if exists('bgr_' + full_file_name):
-        #            remove('bgr_' + full_file_name)
-        #            print('removed old test bgr file')
-        #        if exists('depth_' + full_file_name):
-        #            remove('depth_' + full_file_name)
-        #            print('removed old test depth file')
-        #
-        #    save_frames(full_file_name, operating_fps)
-        #
-        #    # End program if the p key is pressed
-
