@@ -32,8 +32,11 @@ class KinectFrameHandler:
         self._time_index = 0
         self._fps_max, self._fps_min = 0, 100
 
-        # Video codec (works for 8 bit)
-        self._frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+        # Video codec (works for 8 bit avi) compression mangles depth data
+        # self._frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+
+        # Lossless video codec (works for 8 bit avi)
+        self._frame_codec = cv2.VideoWriter_fourcc('L', 'A', 'G', 'S')
 
         # Declare video writers
         self._video_color = cv2.VideoWriter()
