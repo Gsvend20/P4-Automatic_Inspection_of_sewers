@@ -88,17 +88,20 @@ class KinectFrameHandler:
         color_frame_r = color_frame[:, 2]
         color_frame_r = np.reshape(color_frame_r, self._color_frame_size)
         color_frame = cv2.merge([color_frame_b, color_frame_g, color_frame_r])
-        self.color_frame = cv2.rotate(color_frame, cv2.ROTATE_90_CLOCKWISE)
+        color_frame = cv2.rotate(color_frame, cv2.ROTATE_90_CLOCKWISE)
+        self.color_frame = cv2.flip(color_frame, 1)
 
         # Reformat the depth frame format to be a 424 by 512 image of bit depth 16
         depth_frame = np.reshape(self.depth_frame, self._depth_frame_size)
         depth_frame = depth_frame.astype(np.uint16)
-        self.depth_frame = cv2.rotate(depth_frame, cv2.ROTATE_90_CLOCKWISE)
+        depth_frame = cv2.rotate(depth_frame, cv2.ROTATE_90_CLOCKWISE)
+        self.depth_frame = cv2.flip(depth_frame, 1)
 
         # Reformat the ir frame format to be a 424 by 512 image of bit depth 16
         ir_frame = np.reshape(self.ir_frame, self._ir_frame_size)
         ir_frame = ir_frame.astype(np.uint16)
-        self.ir_frame = cv2.rotate(ir_frame, cv2.ROTATE_90_CLOCKWISE)
+        ir_frame = cv2.rotate(ir_frame, cv2.ROTATE_90_CLOCKWISE)
+        self.ir_frame = cv2.flip(ir_frame, 1)
 
         return color_frame, depth_frame, ir_frame
 
@@ -210,7 +213,7 @@ if __name__ == "__main__":
     path = 'sewer recordings/'
 
     # Initialise frame handling object
-    kinect = KinectFrameHandler(30)  # 30 frames/second selected
+    kinect = KinectFrameHandler(10)  # parameter is frames/second
 
     # Initialise video writers
     kinect.start_saving(path)
