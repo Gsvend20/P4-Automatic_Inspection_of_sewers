@@ -10,9 +10,9 @@ def resize_image(image, image_name, procent):
     cv2.imshow(image_name, image)
 
 
-for n in range(1,3):
+for n in range(1,4):
     v_num = n
-    path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/Training data/Straight pipe/'
+    path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/'
 
     vid = cv2.VideoCapture(path_bgr+f'{v_num}_bgr.avi')
     mean_intensity = 0
@@ -23,11 +23,13 @@ for n in range(1,3):
         ret, frame = vid.read()
         if not ret:
             break
+        frame = cv2.convertScaleAbs(frame, alpha=1, beta=40)
         resize_image(frame, 'image', 0.4)
 
-        if cv2.waitKey(10) & 0xFF == ord('q'):
+        key = cv2.waitKey(10)
+        if key & 0xFF == ord('q'):
             break
-        if cv2.waitKey(10) & 0xFF == ord('w'):
+        if key & 0xFF == ord('w'):
 
             full_frame = []
             full_frame.append(frame)

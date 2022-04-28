@@ -10,36 +10,46 @@ def resize_image(image, image_name, procent):
     cv2.imshow(image_name, image)
 
 
-for n in range(1,6):
+for n in range(1,4):
     v_num = n
-    path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/Training data/Branching pipe/'
-
+    path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/'
+    #/sewer recordings/Training data/Offset pipe/Along pipe/30mm/
     vid = cv2.VideoCapture(path_bgr+f'{v_num}_bgr.avi')
     while vid.isOpened():
         # read frame
         ret, frame = vid.read()
         if not ret:
             break
-        blur = cv2.blur(frame, (7, 7))
+        frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=40)
+        blur = cv2.blur(frame, (3, 3))
         hsvImg = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-        # first cut out the apple part
-        upperLimit1 = np.array([95, 255, 230])
-        lowerLimit1 = np.array([40, 0, 0])
 
-        upperLimit2 = np.array([240, 255, 230])
-        lowerLimit2 = np.array([120, 0, 0])
-
-        mask1 = cv2.inRange(hsvImg, lowerLimit1, upperLimit1)
-        mask2 = cv2.inRange(hsvImg, lowerLimit2, upperLimit2)
-        thresh = mask1 + mask2
-        edge = cv2.Canny(thresh, 0, 100)
-        imgBin = thresh+edge
+        thresh = cv2.inRange(hsvImg, np.array([45, 0, 0]), np.array([255, 255, 255]))
+        imgBin = thresh
+        rows = imgBin.shape[0]
+        circles = cv2.HoughCircles(imgBin, cv2.HOUGH_GRADIENT, 1, rows / 16,
+                                  param1=50, param2=20,
+                                  minRadius=400, maxRadius=500)
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for i in circles[0, :]:
+                center = (i[0], i[1])
+                # circle center
+                cv2.circle(imgBin, center, 1, 1, 3)
+                # circle outline
+                radius = i[2]
+                cv2.circle(imgBin, center, radius, (255, 0, 255), 3)
 
         # HSL thresholding is used due to the background always being white
         # a different method is needed if live footage was used
-        resize_image(imgBin, 'image', 0.4)
-        resize_image(edge, 'edge', 0.4)
+        resize_image(frame, 'image', 0.4)
+        #resize_image(edge, 'edge', 0.4)
         resize_image(thresh, 'thresh', 0.4)
+        resize_image(imgBin, 'final', 0.4)
 
-        if cv2.waitKey(10) & 0xFF == ord('q'):
+        key = cv2.waitKey(10)
+        if key & 0xFF == ord('q'):
             break
+        if key & 0xFF == ord('p'):
+            cv2.waitKey(25)
+            cv2.waitKey(0)
