@@ -46,7 +46,7 @@ for j in range(len(types)):
                     irfilename = f"{trainingname}/{types[j]}/ir_{files_name}_{file_number}.png"
                     depthfilename = f"{trainingname}/{types[j]}/depth_{files_name}_{file_number}.png"
                     cv.imwrite(bgrfilename, frame)
-                    if irframe == 0:
+                    if irframe != None:
                         cv.imwrite(irfilename, irframe)
                         cv.imwrite(depthfilename, depthframe)
                     file_number = file_number+1
