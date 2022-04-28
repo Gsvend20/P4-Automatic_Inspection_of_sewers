@@ -36,7 +36,7 @@ class KinectFrameHandler:
         self._color_frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
         # Lossless video codec (works for 8 bit avi)
-        self._ir_frame_codec = cv2.VideoWriter_fourcc('L', 'A', 'G', 'S')
+        self._ir_frame_codec = cv2.VideoWriter_fourcc(*"DIB ")
 
         # Declare video writers
         self._video_color = cv2.VideoWriter()
@@ -110,8 +110,8 @@ class KinectFrameHandler:
 
     # Function to initialise video writers
     def start_saving(self, save_path):
-        length = '25_'
-        string_end = ['bgr_', 'depth_', 'ir_']
+        length = 'test_'
+        string_end = ['_bgr', '_depth', '_ir']
 
         # Generate new number for each file
         for i in range(1, 1000):
