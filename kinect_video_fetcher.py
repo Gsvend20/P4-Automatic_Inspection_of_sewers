@@ -36,7 +36,7 @@ class KinectFrameHandler:
         self._color_frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
         # Lossless video codec (works for 8 bit avi)
-        self._ir_frame_codec = cv2.VideoWriter_fourcc(*"DIB ")
+        self._ir_frame_codec = cv2.VideoWriter_fourcc(*"LAGS")
 
         # Declare video writers
         self._video_color = cv2.VideoWriter()
