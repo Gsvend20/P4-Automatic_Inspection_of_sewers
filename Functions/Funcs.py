@@ -20,9 +20,22 @@ def saveVariables(JVasr):
     JsonFile.close()
 
 
-def GetVid(name_vid):
+def GetVid(name_vid, PathSmall):
     import pathlib
-    cap = cv2.VideoCapture(f'{pathlib.Path().cwd().parent.as_posix()}/sewer recordings/Training data/Branching pipe/{name_vid}.avi')
+    cap = cv2.VideoCapture(f'{pathlib.Path().cwd().parent.as_posix()}/{PathSmall}/{name_vid}.avi')
+#    cap = cv2.VideoCapture(f'{name_vid}.avi')
+    # Check if camera opened successfully
+    if not cap.isOpened():
+        print("Error opening video stream or file")
+        return False
+
+    return_vid = cap
+    return return_vid
+
+
+def GetVid(Full_Path_Vid):
+    import pathlib
+    cap = cv2.VideoCapture(f'{Full_Path_Vid}')
 #    cap = cv2.VideoCapture(f'{name_vid}.avi')
     # Check if camera opened successfully
     if not cap.isOpened():
@@ -59,9 +72,33 @@ def MedColour(input_img, Thres_img):
 
     return Medc
 
+
 def Threshold(input_img):
     return_img = cv2.inRange(input_img, (Vas.low_H, Vas.low_S, Vas.low_V), (Vas.high_H, Vas.high_S, Vas.high_V))
     return return_img
+
+
+def Sobel(input_img):
+    sobelx = cv2.Sobel(input_img, cv2.CV_64F, 1, 0, Vas.EgdeKernel)
+    sobely = cv2.Sobel(input_img, cv2.CV_64F, 0, 1, Vas.EgdeKernel)
+    sobelMix = cv2.add(sobelx, sobely)
+    return sobelMix
+
+
+def Canny(input_img):
+    Cannyimg = cv2.Canny(input_img, Vas.EgdeLow, Vas.EgdeHigh)
+
+    return Cannyimg
+
+
+def Blur(input_img, BlurType):
+    if BlurType == 'Gaussian':
+        output_img = cv2.GaussianBlur(input_img, (Vas.Blur, Vas.Blur), cv2.BORDER_DEFAULT)
+    if BlurType == 'Median':
+        output_img = cv2.medianBlur(input_img, Vas.Blur, cv2.BORDER_DEFAULT)
+    if BlurType == 'Blur':
+        output_img = cv2.blur(input_img, (Vas.Blur, Vas.Blur), cv2.BORDER_DEFAULT)
+    return output_img
 
 
 def Dilation(input_img, Kernel):
