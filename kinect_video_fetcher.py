@@ -32,8 +32,11 @@ class KinectFrameHandler:
         self._time_index = 0
         self._fps_max, self._fps_min = 0, 100
 
-        # Video codec (works for 8 bit)
-        self._frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+        # Video codec (works for 8 bit avi) compression mangles depth data
+        self._color_frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+
+        # Lossless video codec (works for 8 bit avi)
+        self._ir_frame_codec = cv2.VideoWriter_fourcc(*"LAGS")
 
         # Declare video writers
         self._video_color = cv2.VideoWriter()
@@ -107,13 +110,14 @@ class KinectFrameHandler:
 
     # Function to initialise video writers
     def start_saving(self, save_path):
-        string_end = ['_bgr.avi', '_depth.avi', '_ir.avi']
+        length = 'test_'
+        string_end = ['_bgr', '_depth', '_ir']
 
         # Generate new number for each file
         for i in range(1, 1000):
             used_index = 0
             for j in range(0, 3):
-                if exists(save_path + str(i) + string_end[j]):
+                if exists(save_path + length + str(i) + string_end[j] + '.avi'):
                     used_index += 1
                     break
             if used_index == 0:
@@ -123,16 +127,16 @@ class KinectFrameHandler:
                 exit('Too many videos in folder')
 
         # Initialise video writers
-        self._video_color.open(save_path + file_number + string_end[0],
-                               self._frame_codec,
+        self._video_color.open(save_path + length + file_number + string_end[0] + '.avi',
+                               self._color_frame_codec,
                                float(self.kinect_fps_limit),
                                self._color_frame_size)
-        self._video_depth.open(save_path + file_number + string_end[1],
-                               self._frame_codec,
+        self._video_depth.open(save_path + length + file_number + string_end[1] + '.avi',
+                               self._ir_frame_codec,
                                float(self.kinect_fps_limit),
                                self._depth_frame_size)
-        self._video_ir.open(save_path + file_number + string_end[2],
-                            self._frame_codec,
+        self._video_ir.open(save_path + length + file_number + string_end[2] + '.avi',
+                            self._ir_frame_codec,
                             float(self.kinect_fps_limit),
                             self._ir_frame_size)
 
@@ -227,6 +231,10 @@ if __name__ == "__main__":
             kinect.save_frames()
 
         # End program if the q key is pressed
-        if cv2.waitKey(1) == ord('q'):
+        key = cv2.waitKey(1)
+        if key == ord('q'):
             kinect.stop_saving()
             break
+        if key == ord('p'):
+            cv2.waitKey(25)
+            cv2.waitKey(0)
