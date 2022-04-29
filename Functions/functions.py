@@ -3,7 +3,7 @@ import math
 import cv2
 import json
 import numpy as np
-import materials.datafile as Vas
+import Functions.datafile as Vas
 
 
 def saveimg(img, errorClass):
@@ -34,7 +34,6 @@ def GetVid(name_vid, PathSmall):
 
 
 def GetVid(Full_Path_Vid):
-    import pathlib
     cap = cv2.VideoCapture(f'{Full_Path_Vid}')
 #    cap = cv2.VideoCapture(f'{name_vid}.avi')
     # Check if camera opened successfully
