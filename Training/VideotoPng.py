@@ -10,19 +10,23 @@ def resizenation(image, percentage):
     dim = (width, height)
     # resize image
     return cv.resize(image, dim, interpolation=cv.INTER_AREA)
-
+#folder where the training videos are
 folder = '2nd_training_set'
-files_name = "Sand"
+#name of the injury
+files_name = "AF"
+#name of the folder where the training images will land
 trainingname = "Sandtraindata"
 
+#creates a folder for all the training data
 if not exists("./%s" % trainingname):
     mkdir("./%s" % trainingname)
-path = f"{folder}"
-listofvids = listdir(path)
+#path of the folder of your choice
 path = f"{folder}"
 listofvids = listdir(path)
 
+# loops through all the videos and shows them to you, if s is pressed image is saved
 for j, vid in enumerate(listofvids):
+    # Puts out a string type of the name of the path to the three types of video.
     spit = vid.split("_")
     if spit[2] == 'bgr.avi':
         bgrvideo = f"{folder}/{listofvids[j]}"
@@ -31,9 +35,16 @@ for j, vid in enumerate(listofvids):
         types = spit[0]
         videonum = spit[1]
         filenum = 0
+
+        # If the path to the three videos exists create a sub folder of the damage type and then subfolders for
+        # the three video types
         if exists(bgrvideo) and exists(irvideo) and exists(depthvideo):
             if not exists(f"{trainingname}/{types}"):
                 mkdir(f"{trainingname}/{types}")
+                mkdir(f"{trainingname}/{types}/bgr")
+                mkdir(f"{trainingname}/{types}/ir")
+                mkdir(f"{trainingname}/{types}/depth")
+            #reads the frames of the three videos
             bgrcap = cv.VideoCapture(bgrvideo)
             ircap = cv.VideoCapture(irvideo)
             depthcap = cv.VideoCapture(depthvideo)
@@ -52,9 +63,9 @@ for j, vid in enumerate(listofvids):
                 if key == ord("s"):
                     filenum = str(filenum)
                     filenum = filenum.zfill(3)
-                    bgrfilename = f"{trainingname}/{types}/{filenum}_bgr_{files_name}_{videonum}.png"
-                    irfilename = f"{trainingname}/{types}/{filenum}_ir_{files_name}_{videonum}.png"
-                    depthfilename = f"{trainingname}/{types}/{filenum}_depth_{files_name}_{videonum}.png"
+                    bgrfilename = f"{trainingname}/{types}/bgr/{filenum}_bgr_{files_name}_{videonum}.png"
+                    irfilename = f"{trainingname}/{types}/ir/{filenum}_ir_{files_name}_{videonum}.png"
+                    depthfilename = f"{trainingname}/{types}/depth/{filenum}_depth_{files_name}_{videonum}.png"
                     cv.imwrite(bgrfilename, frame)
                     filenum = int(filenum)
                     filenum = filenum+1
