@@ -1,7 +1,6 @@
 import cv2 as cv
 from os.path import exists
 from os import mkdir, listdir
-import numpy as np
 
 def resizenation(image, percentage):
     scale_percent = percentage  # percent of original size #this is just to make the program faster
@@ -11,11 +10,11 @@ def resizenation(image, percentage):
     # resize image
     return cv.resize(image, dim, interpolation=cv.INTER_AREA)
 #folder where the training videos are
-folder = '2nd_training_set'
+folder = '2nd training set'
 #name of the injury
-files_name = "AF"
+files_name = "ROE"
 #name of the folder where the training images will land
-trainingname = "Sandtraindata"
+trainingname = "roots_traindata"
 
 #creates a folder for all the training data
 if not exists("./%s" % trainingname):
@@ -27,6 +26,7 @@ listofvids = listdir(path)
 # loops through all the videos and shows them to you, if s is pressed image is saved
 for j, vid in enumerate(listofvids):
     # Puts out a string type of the name of the path to the three types of video.
+    numb = 0
     spit = vid.split("_")
     if spit[2] == 'bgr.avi':
         bgrvideo = f"{folder}/{listofvids[j]}"
@@ -57,7 +57,7 @@ for j, vid in enumerate(listofvids):
                     break
                 resized = resizenation(frame, 20)
                 cv.imshow("BGR image", resized)
-                key = cv.waitKey(10)
+                key = cv.waitKey(25)
                 if key == ord("q"):
                     break
                 if key == ord("s"):
@@ -71,3 +71,5 @@ for j, vid in enumerate(listofvids):
                     filenum = filenum+1
                     cv.imwrite(irfilename, irframe)
                     cv.imwrite(depthfilename, depthframe)
+                    numb += 1
+                    print(numb)
