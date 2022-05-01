@@ -6,7 +6,7 @@ import pathlib
 # --- To stop program press q ---
 
 # Select picture path from .../P4-Automatic_Inspection_of_sewers/ directory
-picPath = '/materials/GR-type_0_5.jpg'
+picPath = '/materials/'
 
 # Window name options
 window_capture_name = 'Original Image'

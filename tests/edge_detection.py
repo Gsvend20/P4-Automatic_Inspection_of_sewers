@@ -10,7 +10,7 @@ def resize_image(image, image_name, procent):
     cv.imshow(image_name, image)
 
 
-picPath = Path.cwd().parent.as_posix()+'/materials/GR-type_0_2.jpg'
+picPath = Path.cwd().parent.as_posix()+'/materials/'
 
 img = cv.imread(picPath)
 grey = cv.imread(picPath, 0)
