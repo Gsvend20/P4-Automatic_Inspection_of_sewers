@@ -1,4 +1,5 @@
 import cv2 as cv
+import numpy as np
 from os.path import exists
 from os import mkdir, listdir
 
@@ -14,7 +15,7 @@ folder = '2nd training set'
 #name of the injury
 files_name = "ROE"
 #name of the folder where the training images will land
-trainingname = "roots_traindata"
+trainingname = "roots_traindata2"
 
 #creates a folder for all the training data
 if not exists("./%s" % trainingname):
@@ -69,7 +70,11 @@ for j, vid in enumerate(listofvids):
                     cv.imwrite(bgrfilename, frame)
                     filenum = int(filenum)
                     filenum = filenum+1
+                    ir_hi_bytes, ir_lo_bytes, empty = cv.split(irframe)
+                    irframe = ir_lo_bytes.astype('uint16') + np.left_shift(ir_hi_bytes.astype('uint16'), 8)
                     cv.imwrite(irfilename, irframe)
+                    depth_hi_bytes, depth_lo_bytes, empty = cv.split(depthframe)
+                    depthframe = depth_lo_bytes.astype('uint16') + np.left_shift(depth_hi_bytes.astype('uint16'), 8)
                     cv.imwrite(depthfilename, depthframe)
                     numb += 1
                     print(numb)
