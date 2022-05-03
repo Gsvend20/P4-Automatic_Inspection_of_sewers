@@ -1,20 +1,14 @@
 import cv2
 from pathlib import Path
 from matplotlib import pyplot as plt
+from os import mkdir, listdir
+from Functions import imgproc_func as func
 
-def resize_image(image, image_name, procent):
-    [height, width] = [image.shape[0],image.shape[1]]
-    [height, width] = [procent*height, procent*width]
-    cv2.namedWindow(image_name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(image_name, int(width), int(height))
-    cv2.imshow(image_name, image)
+path = f'{Path.cwd().parent.as_posix()}/sewer recordings/Histogram'
+listofvids = listdir(path)
 
-
-for n in range(1,4):
-    v_num = n
-    path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/'
-
-    vid = cv2.VideoCapture(path_bgr+f'{v_num}_bgr.avi')
+for vid in listofvids:
+    vid = cv2.VideoCapture(f'{path}/{vid}')
     mean_intensity = 0
     frame_length = 0
     max_min_intensity = []
@@ -24,7 +18,7 @@ for n in range(1,4):
         if not ret:
             break
         frame = cv2.convertScaleAbs(frame, alpha=1, beta=40)
-        resize_image(frame, 'image', 0.4)
+        func.resize_image(frame, 'image', 0.4)
 
         key = cv2.waitKey(10)
         if key & 0xFF == ord('q'):

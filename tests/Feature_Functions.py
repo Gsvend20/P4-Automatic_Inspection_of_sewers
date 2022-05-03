@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 
 # Select picture path from .../P4-Automatic_Inspection_of_sewers/ directory
-picPath = '/materials/GR-type_0_2.jpg'
+picPath = '/materials/'
 
 
 def find_circularity(area, perimeter):

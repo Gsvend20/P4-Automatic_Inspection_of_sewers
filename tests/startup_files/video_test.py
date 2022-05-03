@@ -15,7 +15,7 @@ def open_image(inputimage, e_kernel, d_kernel):
     return e_out
 
 
-vid = cv.VideoCapture(Path.cwd().parent.as_posix()+'/materials/Video_long.mpg')
+vid = cv.VideoCapture(Path.cwd().parent.as_posix()+'/materials/')
 
 while (vid.isOpened()):
     # read frame
