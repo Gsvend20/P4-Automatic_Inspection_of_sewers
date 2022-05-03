@@ -11,9 +11,11 @@ def resizenation(image, percentage):
     # resize image
     return cv.resize(image, dim, interpolation=cv.INTER_AREA)
 #folder where the training videos are
+
 folder = '2nd_training_set'
 #name of the injury
 files_name = "AF"
+
 #name of the folder where the training images will land
 trainingname = "Sandtraindata"
 
