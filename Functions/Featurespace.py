@@ -57,10 +57,10 @@ class FeatureSpace:
         perimeter = cv2.arcLength(cnt, True)
         hull = cv2.convexHull(cnt)
         hullperimeter = cv2.arcLength(hull, True)
-        self.convex_ratio_perimeter.append(int(hullperimeter/perimeter))
+        self.convex_ratio_perimeter.append(hullperimeter/perimeter)
 
         # Compactness
-        self.compactness.append(int(largest_area/(img.shape[0]*img.shape[1])))
+        self.compactness.append(largest_area/(img.shape[0]*img.shape[1]))
 
         # Elongation of min area rect
         (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(cnt)
@@ -103,7 +103,7 @@ def plot_features(dataset):
         QuadraticDiscriminantAnalysis(),
     ]
 
-    figure = plt.figure(figsize=(27, 9))
+    figure = plt.figure(figsize=(30, 9))
     i = 1
     # iterate over datasets
     #for ds_cnt, ds in enumerate(dataset):
@@ -121,7 +121,7 @@ def plot_features(dataset):
     # just plot the dataset first
     cm = plt.cm.RdBu
     cm_bright = ListedColormap(["#FF0000", "#0000FF"])
-    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+    ax = plt.subplot(len(datasets) - 1, len(classifiers) + 1, i)
     #if ds_cnt == 0:
     ax.set_title("Input data")
     # Plot the training points
@@ -137,7 +137,7 @@ def plot_features(dataset):
 
     # iterate over classifiers
     for name, clf in zip(names, classifiers):
-        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+        ax = plt.subplot(len(datasets) - 1, len(classifiers) + 1, i)
         clf.fit(X_train, y_train)
         score = clf.score(X_test, y_test)
 
@@ -206,10 +206,11 @@ datasets = []
 intervals = []
 
 for i in index_1:
-    datasets.append([featurelist.thinness[i], featurelist.elongation[i]])
+    print(featurelist.compactness[i])
+    datasets.append([featurelist.compactness[i], featurelist.elongation[i]])
     intervals.append(0)
 for i in index_2:
-    datasets.append([featurelist.thinness[i], featurelist.elongation[i]])
+    datasets.append([featurelist.compactness[i], featurelist.elongation[i]])
     intervals.append(1)
 datasets = (np.array(datasets), np.array(intervals))
 
