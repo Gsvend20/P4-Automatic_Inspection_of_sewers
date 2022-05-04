@@ -31,7 +31,6 @@ class FeatureSpace:
         self.ferets = []
         self.thinness = []
 
-
     def createFeatures(self, contours, hierarchy, error_type):
         # saving type of data
         self.type.append(error_type)
@@ -60,7 +59,8 @@ class FeatureSpace:
         self.convex_ratio_perimeter.append(hullperimeter/perimeter)
 
         # Compactness
-        self.compactness.append(largest_area/(img.shape[0]*img.shape[1]))
+        x, y, w, h = cv2.boundingRect(cnt)
+        self.compactness.append(largest_area/(w*h))
 
         # Elongation of min area rect
         (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(cnt)
@@ -197,20 +197,19 @@ for types in type_list:
                 if img is not None and np.mean(img) > 0:
                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
                     featurelist.createFeatures(cnt, hir, f"{types}_{category}")
-    break
+
 
 index_1 = np.where(np.array(featurelist.type) == 'AF_150')[0]
-index_2 = np.where(np.array(featurelist.type) == 'AF_15')[0]
+index_2 = np.where(np.array(featurelist.type) == 'AF_120')[0]
 
 datasets = []
 intervals = []
 
 for i in index_1:
-    print(featurelist.compactness[i])
-    datasets.append([featurelist.compactness[i], featurelist.elongation[i]])
+    datasets.append([featurelist.compactness[i], featurelist.ferets[i]])
     intervals.append(0)
 for i in index_2:
-    datasets.append([featurelist.compactness[i], featurelist.elongation[i]])
+    datasets.append([featurelist.compactness[i], featurelist.ferets[i]])
     intervals.append(1)
 datasets = (np.array(datasets), np.array(intervals))
 
