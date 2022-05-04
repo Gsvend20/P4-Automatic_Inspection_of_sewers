@@ -188,12 +188,12 @@ type_list = find_annodir()
 for types in type_list:
     # Run through all subtypes
     for category in os.listdir(types):
-        mask_path = os.listdir(f"{types}/{category}/bgr/rgbMasks")
+        mask_path = os.listdir(f"{types}/{category}/rgbMasks")
         # Get filenames
         for images in mask_path:
             # Load image
             if images.endswith('.png'):
-                img = cv2.imread(f"{types}/{category}/bgr/rgbMasks/{images}", 0)
+                img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
                 if img is not None and np.mean(img) > 0:
                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
                     featurelist.createFeatures(cnt, hir, f"{types}_{category}")
