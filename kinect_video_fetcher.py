@@ -7,6 +7,8 @@ from os.path import exists
 from pykinect2 import PyKinectV2
 from pykinect2 import PyKinectRuntime
 
+import kinect_python_functions as mapper
+
 kinect_runtime = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
 
 # Debug mode
@@ -18,12 +20,11 @@ class KinectFrameHandler:
         # Frame sizes (Not rescaling!)
         self._color_frame_size = (1080, 1920)
         self._depth_frame_size = (424, 512)
-        self._ir_frame_size = (424, 512)
 
         # Start with empty frames until filled by fetched frames (allows showing before first frame received)
         self.color_frame = np.zeros(self._color_frame_size)
         self.depth_frame = np.zeros(self._depth_frame_size)
-        self.ir_frame = np.zeros(self._ir_frame_size)
+        self.rgbd_frame = np.zeros(self._color_frame_size)
 
         # Frame-rate timing for getting data from Kinect
         self.kinect_fps_limit = kinect_desired_fps
@@ -36,12 +37,12 @@ class KinectFrameHandler:
         self._color_frame_codec = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
         # Lossless video codec (works for 8 bit avi)
-        self._ir_frame_codec = cv2.VideoWriter_fourcc(*"LAGS")
+        self._depth_frame_codec = cv2.VideoWriter_fourcc(*"LAGS")
 
         # Declare video writers
         self._video_color = cv2.VideoWriter()
         self._video_depth = cv2.VideoWriter()
-        self._video_ir = cv2.VideoWriter()
+        self._video_rgbd = cv2.VideoWriter()
 
     # Function to fetch one frame from each feed, frames are saved in class variables
     def fetch_frames(self, kinect_runtime_object):
@@ -72,7 +73,8 @@ class KinectFrameHandler:
                 # Fetch the latest frames from kinect source
                 self.color_frame = kinect_runtime_object.get_last_color_frame()
                 self.depth_frame = kinect_runtime_object.get_last_depth_frame()
-                self.ir_frame = kinect_runtime_object.get_last_infrared_frame()
+                self.rgbd_frame = mapper.record_rgbd(kinect_runtime_object)
+
                 break
 
         return
@@ -94,24 +96,24 @@ class KinectFrameHandler:
         color_frame = cv2.rotate(color_frame, cv2.ROTATE_90_CLOCKWISE)
         self.color_frame = cv2.flip(color_frame, 1)
 
-        # Reformat the depth frame format to be a 424 by 512 image of bit depth 16
+        # Reformat the depth frame format to be a 1080 by 1920 image of bit depth 16
         depth_frame = np.reshape(self.depth_frame, self._depth_frame_size)
         depth_frame = depth_frame.astype(np.uint16)
         depth_frame = cv2.rotate(depth_frame, cv2.ROTATE_90_CLOCKWISE)
         self.depth_frame = cv2.flip(depth_frame, 1)
 
         # Reformat the ir frame format to be a 424 by 512 image of bit depth 16
-        ir_frame = np.reshape(self.ir_frame, self._ir_frame_size)
-        ir_frame = ir_frame.astype(np.uint16)
-        ir_frame = cv2.rotate(ir_frame, cv2.ROTATE_90_CLOCKWISE)
-        self.ir_frame = cv2.flip(ir_frame, 1)
+        rgbd_frame = np.reshape(self.rgbd_frame[:,:,1], self._color_frame_size)
+        rgbd_frame = rgbd_frame.astype(np.uint16)
+        rgbd_frame = cv2.rotate(rgbd_frame, cv2.ROTATE_90_CLOCKWISE)
+        self.rgbd_frame = cv2.flip(rgbd_frame, 1)
 
-        return color_frame, depth_frame, ir_frame
+        return color_frame, depth_frame, rgbd_frame
 
     # Function to initialise video writers
     def start_saving(self, save_path):
         length = 'test_'
-        string_end = ['_bgr', '_depth', '_ir']
+        string_end = ['_bgr', '_depth', '_aligned']
 
         # Generate new number for each file
         for i in range(1, 1000):
@@ -132,13 +134,13 @@ class KinectFrameHandler:
                                float(self.kinect_fps_limit),
                                self._color_frame_size)
         self._video_depth.open(save_path + length + file_number + string_end[1] + '.avi',
-                               self._ir_frame_codec,
+                               self._depth_frame_codec,
                                float(self.kinect_fps_limit),
                                self._depth_frame_size)
-        self._video_ir.open(save_path + length + file_number + string_end[2] + '.avi',
-                            self._ir_frame_codec,
+        self._video_rgbd.open(save_path + length + file_number + string_end[2] + '.avi',
+                            self._depth_frame_codec,
                             float(self.kinect_fps_limit),
-                            self._ir_frame_size)
+                            self._color_frame_size)
 
         return
 
@@ -160,16 +162,16 @@ class KinectFrameHandler:
         self._video_depth.write(split_depth_frame)
 
         # Prepare depth frame for encoding
-        ir_hi_bytes = np.right_shift(self.ir_frame, 8).astype('uint8')
-        ir_lo_bytes = self.ir_frame.astype('uint8')
-        split_ir_frame = cv2.merge([ir_hi_bytes, ir_lo_bytes, np.zeros_like(ir_hi_bytes)])
+        rgbd_hi_bytes = np.right_shift(self.rgbd_frame, 8).astype('uint8')
+        rgbd_lo_bytes = self.rgbd_frame.astype('uint8')
+        split_rgbd_frame = cv2.merge([rgbd_hi_bytes, rgbd_lo_bytes, np.zeros_like(rgbd_hi_bytes)])
 
         # NOTICE: To unpack this into original frame do as follows
         # ir_hi_bytes, ir_lo_bytes, empty = cv2.split(split_ir_frame)
         # ir_frame = ir_lo_bytes.astype('uint16') + np.left_shift(ir_hi_bytes.astype('uint16'), 8)
 
         # Save ir frame
-        self._video_ir.write(split_ir_frame)
+        self._video_rgbd.write(split_rgbd_frame)
 
         return
 
@@ -177,7 +179,7 @@ class KinectFrameHandler:
     def stop_saving(self):
         self._video_color.release()
         self._video_depth.release()
-        self._video_ir.release()
+        self._video_rgbd.release()
 
         return
 
@@ -206,8 +208,22 @@ class KinectFrameHandler:
         # Show depth frames as they are recorded
         cv2.imshow('KINECT depth channel', depth_frame_color)
 
-        # Show depth frames as they are recorded
-        cv2.imshow('KINECT ir channel', self.ir_frame)
+
+        # scale depth frame to fit within 3 channels of bit depth 8
+        rgbd_frame = self.rgbd_frame / 8192 * 3 * depth_segmentation_value
+
+        # segment depth image into 3 color channels for better visualisation
+        rgbd_frame_b = np.where(rgbd_frame > 2 * depth_segmentation_value - 1,
+                                 cv2.subtract(rgbd_frame, 2 * depth_segmentation_value), np.zeros_like(rgbd_frame))
+        rgbd_frame = np.where(rgbd_frame > 2 * depth_segmentation_value - 1, np.zeros_like(rgbd_frame), rgbd_frame)
+        rgbd_frame_g = np.where(rgbd_frame > depth_segmentation_value - 1,
+                                 cv2.subtract(rgbd_frame, depth_segmentation_value), np.zeros_like(rgbd_frame))
+        rgbd_frame_r = np.where(rgbd_frame > depth_segmentation_value - 1, np.zeros_like(rgbd_frame), rgbd_frame)
+        rgbd_frame_color = cv2.merge([rgbd_frame_b, rgbd_frame_g, rgbd_frame_r])
+        rgbd_frame_color = rgbd_frame_color.astype(np.uint8)
+
+        # Show aligned frames as they are recorded
+        cv2.imshow('KINECT aligned image', cv2.resize(rgbd_frame_color, self._depth_frame_size))
 
         return
 
