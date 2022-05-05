@@ -1,11 +1,9 @@
 import os
 import cv2
 import numpy as np
-import sklearn as skl
-#import matplotlib as plt
+import fnmatch
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from sklearn.datasets import make_moons
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
@@ -103,72 +101,72 @@ def plot_features(dataset):
         QuadraticDiscriminantAnalysis(),
     ]
 
-    figure = plt.figure(figsize=(30, 9))
+    figure = plt.figure(figsize=(29, 9))
     i = 1
     # iterate over datasets
-    #for ds_cnt, ds in enumerate(dataset):
-    # preprocess dataset, split into training and test part
-    X, y = dataset
-    X = StandardScaler().fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, random_state=42
-    )
+    for ds_cnt, ds in enumerate(dataset):
+        # preprocess dataset, split into training and test part
+        X, y = ds
+        X = StandardScaler().fit_transform(X)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
 
-    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
-    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+        x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+        y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
-    # just plot the dataset first
-    cm = plt.cm.RdBu
-    cm_bright = ListedColormap(["#FF0000", "#0000FF"])
-    ax = plt.subplot(len(datasets) - 1, len(classifiers) + 1, i)
-    #if ds_cnt == 0:
-    ax.set_title("Input data")
-    # Plot the training points
-    ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k")
-    # Plot the testing points
-    ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6, edgecolors="k")
-
-    ax.set_xlim(xx.min(), xx.max())
-    ax.set_ylim(yy.min(), yy.max())
-    ax.set_xticks(())
-    ax.set_yticks(())
-    i += 1
-
-    # iterate over classifiers
-    for name, clf in zip(names, classifiers):
-        ax = plt.subplot(len(datasets) - 1, len(classifiers) + 1, i)
-        clf.fit(X_train, y_train)
-        score = clf.score(X_test, y_test)
-
-        # Plot the decision boundary. For that, we will assign a color to each
-        # point in the mesh [x_min, x_max]x[y_min, y_max].
-        if hasattr(clf, "decision_function"):
-            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-        else:
-            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
-
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
-
+        # just plot the dataset first
+        cm = plt.cm.RdBu
+        cm_bright = ListedColormap(["#FF0000", "#0000FF"])
+        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+        if ds_cnt == 0:
+            ax.set_title("Input data")
         # Plot the training points
-        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, edgecolors="k")
+        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k")
+        # Plot the testing points
+        ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6, edgecolors="k")
 
         ax.set_xlim(xx.min(), xx.max())
         ax.set_ylim(yy.min(), yy.max())
         ax.set_xticks(())
         ax.set_yticks(())
-        #if ds_cnt == 0:
-        ax.set_title(name)
-        ax.text(
-            xx.max() - 0.3,
-            yy.min() + 0.3,
-            ("%.2f" % score).lstrip("0"),
-            size=15,
-            horizontalalignment="right",
-        )
         i += 1
+
+        # iterate over classifiers
+        for name, clf in zip(names, classifiers):
+            ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+            clf.fit(X_train, y_train)
+            score = clf.score(X_test, y_test)
+
+            # Plot the decision boundary. For that, we will assign a color to each
+            # point in the mesh [x_min, x_max]x[y_min, y_max].
+            if hasattr(clf, "decision_function"):
+                Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+            else:
+                Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+            # Put the result into a color plot
+            Z = Z.reshape(xx.shape)
+            ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
+
+            # Plot the training points
+            ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, edgecolors="k")
+
+            ax.set_xlim(xx.min(), xx.max())
+            ax.set_ylim(yy.min(), yy.max())
+            ax.set_xticks(())
+            ax.set_yticks(())
+            if ds_cnt == 0:
+                ax.set_title(name)
+            ax.text(
+                xx.max() - 0.3,
+                yy.min() + 0.3,
+                ("%.2f" % score).lstrip("0"),
+                size=15,
+                horizontalalignment="right",
+            )
+            i += 1
 
     plt.tight_layout()
     plt.show()
@@ -180,6 +178,7 @@ def find_annodir():
     os.chdir(path)
     folder_list = os.listdir()
     return folder_list
+
 
 featurelist = FeatureSpace()
 type_list = find_annodir()
@@ -199,18 +198,30 @@ for types in type_list:
                     featurelist.createFeatures(cnt, hir, f"{types}_{category}")
 
 
-index_1 = np.where(np.array(featurelist.type) == 'AF_150')[0]
-index_2 = np.where(np.array(featurelist.type) == 'AF_120')[0]
+index_1 = np.where(np.char.find(np.array(featurelist.type), 'AF') + 1)[0]
+index_2 = np.where(np.char.find(np.array(featurelist.type), 'FS_H') + 1)[0]
 
-datasets = []
+# Create signifiers of which category each datapoint belongs to
 intervals = []
-
 for i in index_1:
-    datasets.append([featurelist.compactness[i], featurelist.ferets[i]])
     intervals.append(0)
 for i in index_2:
-    datasets.append([featurelist.compactness[i], featurelist.ferets[i]])
     intervals.append(1)
-datasets = (np.array(datasets), np.array(intervals))
+
+# Create datasets
+datasets1 = []
+datasets2 = []
+datasets3 = []
+for i in index_1:
+    datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
+    datasets2.append([featurelist.elongation[i], featurelist.ferets_angle[i]])
+    datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
+for i in index_2:
+    datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
+    datasets2.append([featurelist.elongation[i], featurelist.ferets_angle[i]])
+    datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
+datasets = [(np.array(datasets1), np.array(intervals)),
+            (np.array(datasets2), np.array(intervals)),
+            (np.array(datasets3), np.array(intervals))]
 
 plot_features(datasets)
