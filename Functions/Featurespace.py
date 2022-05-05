@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
+
 class FeatureSpace:
     def __init__(self):
         self.type = []
@@ -29,7 +30,7 @@ class FeatureSpace:
         self.ferets = []
         self.thinness = []
 
-    def createFeatures(self, contours, hierarchy, error_type):
+    def create_features(self, contours, hierarchy, error_type):
         # saving type of data
         self.type.append(error_type)
         hierarchy = hierarchy[0]  # Unpacking [[[[[[[hierarchy]]]]]]]
@@ -54,11 +55,11 @@ class FeatureSpace:
         perimeter = cv2.arcLength(cnt, True)
         hull = cv2.convexHull(cnt)
         hullperimeter = cv2.arcLength(hull, True)
-        self.convex_ratio_perimeter.append(hullperimeter/perimeter)
+        self.convex_ratio_perimeter.append(hullperimeter / perimeter)
 
         # Compactness
         x, y, w, h = cv2.boundingRect(cnt)
-        self.compactness.append(largest_area/(w*h))
+        self.compactness.append(largest_area / (w * h))
 
         # Elongation of min area rect
         (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(cnt)
@@ -71,6 +72,74 @@ class FeatureSpace:
         # Thinness TODO: Needs normalisation
         self.thinness.append(perimeter / largest_area)
 
+    def get_features(self):
+        features = []
+        for i in range(0, np.shape(self.type)[0]):
+            features.append([#self.centerX[i],
+                             #self.centerY[i],
+                             #self.convex_ratio_perimeter[i],
+                             #self.hierachy_Bool[i],
+                             self.compactness[i],
+                             #self.elongation[i],
+                             #self.ferets_angle[i],
+                             #self.ferets[i],
+                             self.thinness[i]])
+        return features
+
+
+class Classifier:
+    def __init__(self, training_features, training_labels):
+        self._classifier_names = ["Nearest Neighbors",
+                                  "Linear SVM",
+                                  "RBF SVM",
+                                  "Gaussian Process",
+                                  "Decision Tree",
+                                  "Random Forest",
+                                  "Neural Net",
+                                  "AdaBoost",
+                                  "Naive Bayes",
+                                  "QDA",
+                                  ]
+        self._classifiers = [KNeighborsClassifier(3),
+                             SVC(kernel="linear", C=0.025),
+                             SVC(gamma=2, C=1),
+                             GaussianProcessClassifier(1.0 * RBF(1.0)),
+                             DecisionTreeClassifier(max_depth=5),
+                             RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+                             MLPClassifier(alpha=1, max_iter=1000),
+                             AdaBoostClassifier(),
+                             GaussianNB(),
+                             QuadraticDiscriminantAnalysis(),
+                             ]
+        self._training_features = training_features
+        self._training_labels = training_labels
+
+    def test_classifiers(self):
+        # Normalise feature data
+        x = StandardScaler().fit_transform(self._training_features)
+
+        # Split data into test and training data
+        x_train, x_test, y_train, y_test = train_test_split(x, self._training_labels, test_size=0.4, random_state=42)
+
+        # Check all available classifiers and return final scores
+        score = []
+        for clf in self._classifiers:
+            # Train classifier
+            clf.fit(x_train, y_train)
+
+            # Score classifier
+            score.append(clf.score(x_test, y_test))
+
+        # Make a list of the best classifiers for the dataset
+        best_classifiers = []
+        highest_scores = score
+        highest_scores.sort(reverse=True)
+        for i in range(0, len(highest_scores)):
+            index = score.index(highest_scores[i])
+            best_classifiers.append([self._classifier_names[index], score[index]])
+
+        return best_classifiers
+
 
 def plot_features(dataset):
     h = 0.02  # step size in the mesh
@@ -80,10 +149,10 @@ def plot_features(dataset):
         "Linear SVM",
         "RBF SVM",
         "Gaussian Process",
-        "Decision Tree",
-        "Random Forest",
+        # "Decision Tree",
+        # "Random Forest",
         "Neural Net",
-        "AdaBoost",
+        # "AdaBoost",
         "Naive Bayes",
         "QDA",
     ]
@@ -93,10 +162,10 @@ def plot_features(dataset):
         SVC(kernel="linear", C=0.025),
         SVC(gamma=2, C=1),
         GaussianProcessClassifier(1.0 * RBF(1.0)),
-        DecisionTreeClassifier(max_depth=5),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        # DecisionTreeClassifier(max_depth=5),
+        # RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
         MLPClassifier(alpha=1, max_iter=1000),
-        AdaBoostClassifier(),
+        # AdaBoostClassifier(),
         GaussianNB(),
         QuadraticDiscriminantAnalysis(),
     ]
@@ -147,6 +216,7 @@ def plot_features(dataset):
                 Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
 
             # Put the result into a color plot
+            print(xx.shape)
             Z = Z.reshape(xx.shape)
             ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
 
@@ -195,11 +265,29 @@ for types in type_list:
                 img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
                 if img is not None and np.mean(img) > 0:
                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
-                    featurelist.createFeatures(cnt, hir, f"{types}_{category}")
+                    featurelist.create_features(cnt, hir, f"{types}_{category}")
+
+classify = Classifier(featurelist.get_features(), featurelist.type)
+scores = classify.test_classifiers()
+exit(scores)
+
+# Generate labels
+labels = []
+
+labels.append(np.char.find(np.array(featurelist.type), 'AF') + 1)
+labels.append(np.char.find(np.array(featurelist.type), 'FS') + 2)
+labels.append(np.char.find(np.array(featurelist.type), 'GR') + 3)
+labels.append(np.char.find(np.array(featurelist.type), 'ROE') + 4)
+print(np.shape(labels)[0])
+print(np.shape(featurelist.type)[0])
+exit(0)
 
 
-index_1 = np.where(np.char.find(np.array(featurelist.type), 'AF') + 1)[0]
-index_2 = np.where(np.char.find(np.array(featurelist.type), 'FS_H') + 1)[0]
+exit(0)
+
+index_1 = np.where(np.char.find(np.array(featurelist.type), 'ROE_70') + 1)[0]
+index_2 = np.where(np.char.find(np.array(featurelist.type), 'ROE_150') + 1)[0]
+index_3 = np.where(np.char.find(np.array(featurelist.type), 'ROE_300') + 1)[0]
 
 # Create signifiers of which category each datapoint belongs to
 intervals = []
@@ -214,11 +302,11 @@ datasets2 = []
 datasets3 = []
 for i in index_1:
     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    datasets2.append([featurelist.elongation[i], featurelist.ferets_angle[i]])
+    datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
 for i in index_2:
     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    datasets2.append([featurelist.elongation[i], featurelist.ferets_angle[i]])
+    datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
 datasets = [(np.array(datasets1), np.array(intervals)),
             (np.array(datasets2), np.array(intervals)),
