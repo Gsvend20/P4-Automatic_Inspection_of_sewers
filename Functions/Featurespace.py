@@ -1,11 +1,9 @@
 import os
 import cv2
 import numpy as np
-import sklearn as skl
-#import matplotlib as plt
+import fnmatch
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from sklearn.datasets import make_moons
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
@@ -103,7 +101,7 @@ def plot_features(dataset):
         QuadraticDiscriminantAnalysis(),
     ]
 
-    figure = plt.figure(figsize=(30, 9))
+    figure = plt.figure(figsize=(29, 3))
     i = 1
     # iterate over datasets
     #for ds_cnt, ds in enumerate(dataset):
@@ -181,6 +179,7 @@ def find_annodir():
     folder_list = os.listdir()
     return folder_list
 
+
 featurelist = FeatureSpace()
 type_list = find_annodir()
 
@@ -188,19 +187,19 @@ type_list = find_annodir()
 for types in type_list:
     # Run through all subtypes
     for category in os.listdir(types):
-        mask_path = os.listdir(f"{types}/{category}/bgr/rgbMasks")
+        mask_path = os.listdir(f"{types}/{category}/rgbMasks")
         # Get filenames
         for images in mask_path:
             # Load image
             if images.endswith('.png'):
-                img = cv2.imread(f"{types}/{category}/bgr/rgbMasks/{images}", 0)
+                img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
                 if img is not None and np.mean(img) > 0:
                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
                     featurelist.createFeatures(cnt, hir, f"{types}_{category}")
 
 
-index_1 = np.where(np.array(featurelist.type) == 'AF_150')[0]
-index_2 = np.where(np.array(featurelist.type) == 'AF_120')[0]
+index_1 = np.where(np.char.find(np.array(featurelist.type), 'AF_150') + 1)[0]
+index_2 = np.where(np.char.find(np.array(featurelist.type), 'AF_150') + 1)[0]
 
 datasets = []
 intervals = []
