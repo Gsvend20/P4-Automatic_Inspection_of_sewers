@@ -1,9 +1,9 @@
 import os
 import cv2
 import numpy as np
-import fnmatch
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
@@ -75,20 +75,21 @@ class FeatureSpace:
     def get_features(self):
         features = []
         for i in range(0, np.shape(self.type)[0]):
-            features.append([#self.centerX[i],
-                             #self.centerY[i],
-                             #self.convex_ratio_perimeter[i],
-                             #self.hierachy_Bool[i],
+            features.append([self.centerX[i],
+                             self.centerY[i],
+                             self.convex_ratio_perimeter[i],
+                             # self.hierachy_Bool[i],
                              self.compactness[i],
-                             #self.elongation[i],
-                             #self.ferets_angle[i],
-                             #self.ferets[i],
-                             self.thinness[i]])
+                             self.elongation[i],
+                             # self.ferets_angle[i],
+                             self.ferets[i],
+                             self.thinness[i]
+                             ])
         return features
 
 
 class Classifier:
-    def __init__(self, training_features, training_labels):
+    def __init__(self):
         self._classifier_names = ["Nearest Neighbors",
                                   "Linear SVM",
                                   "RBF SVM",
@@ -103,7 +104,8 @@ class Classifier:
         self._classifiers = [KNeighborsClassifier(3),
                              SVC(kernel="linear", C=0.025),
                              SVC(gamma=2, C=1),
-                             GaussianProcessClassifier(1.0 * RBF(1.0)),
+                             GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)),
+                                                       max_iter_predict=1000),
                              DecisionTreeClassifier(max_depth=5),
                              RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
                              MLPClassifier(alpha=1, max_iter=1000),
@@ -111,37 +113,141 @@ class Classifier:
                              GaussianNB(),
                              QuadraticDiscriminantAnalysis(),
                              ]
-        self._training_features = training_features
+
+        self._training_features = None
+        self._training_labels = None
+        self._test_features = None
+        self._test_labels = None
+
+        self._type_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        self._AF_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        self._FS_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        self._GR_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        self._ROE_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+
+    # Scale and normalise training data to allow for model training
+    def prepare_training_data(self, training_features, training_labels):
+        self._training_features = StandardScaler().fit_transform(training_features)
         self._training_labels = training_labels
 
-    def test_classifiers(self):
+    # Create test data by splitting training set
+    def split_training_data(self, test_ratio=0.4):
+        x_tra, x_tes, y_tra, y_tes = train_test_split(self._training_features,
+                                                      self._training_labels,
+                                                      test_size=test_ratio,
+                                                      random_state=42)
+        self._training_features = x_tra
+        self._training_labels = y_tra
+        self._test_features = x_tes
+        self._test_labels = y_tes
+
+    # Train selected classifier
+    def train_classifier(self):
+        if self._training_features is not None:
+            self._type_classifier.fit(self._training_features, self._training_labels)
+        else:
+            exit('no training data available!')
+
+    # Test how well the classifier does on the test set
+    def test_classifier(self):
+        np.set_printoptions(precision=2)  # TODO what this do?
+
+        # Plot non-normalized confusion matrix
+        disp = ConfusionMatrixDisplay.from_estimator(self._type_classifier,
+                                                     self._test_features,
+                                                     self._test_labels,
+                                                     display_labels=np.unique(np.array(self._test_labels)),
+                                                     cmap=plt.cm.Blues)
+        disp.ax_.set_title("Confusion matrix for type classifier")
+        plt.show()
+
+    # Save trained classifiers in dump file for future use
+    def save_trained_classifier(self):
+        # TODO: Enable saving with pickle dump
+        pass
+
+    # Load trained classifier from dump file for use in this program
+    def load_trained_classifier(self):
+        # TODO: Enable saving with pickle dump
+        pass
+
+    # Generate and print a list of the most suitable classifiers for selected classification
+    def best_classifiers(self):
+        # Check all available classifiers and return final scores
+        score = []
+        for clf in self._classifiers:
+            # Train classifier
+            clf.fit(self._training_features, self._training_labels)
+
+            # Score classifier
+            score.append(clf.score(self._test_features, self._test_labels))
+
+        # Make a list of the best classifiers for the dataset
+        best_classifiers = []
+        highest_scores = score.copy()
+        highest_scores.sort(reverse=True)
+        for i in range(0, len(highest_scores)):
+            index = score.index(highest_scores[i])
+            best_classifiers.append([self._classifier_names[index], score[index]])
+
+        print(best_classifiers)
+
+    def classify(self, test_data=None, test_labels=None):
+
         # Normalise feature data
         x = StandardScaler().fit_transform(self._training_features)
 
         # Split data into test and training data
         x_train, x_test, y_train, y_test = train_test_split(x, self._training_labels, test_size=0.4, random_state=42)
 
-        # Check all available classifiers and return final scores
-        score = []
-        for clf in self._classifiers:
-            # Train classifier
-            clf.fit(x_train, y_train)
+        clf = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        clf.fit(x_train, y_train)
+        print(clf.score(x_test, y_test))
 
-            # Score classifier
-            score.append(clf.score(x_test, y_test))
+        np.set_printoptions(precision=2)
 
-        # Make a list of the best classifiers for the dataset
-        best_classifiers = []
-        highest_scores = score
-        highest_scores.sort(reverse=True)
-        for i in range(0, len(highest_scores)):
-            index = score.index(highest_scores[i])
-            best_classifiers.append([self._classifier_names[index], score[index]])
-
-        return best_classifiers
+        # Plot non-normalized confusion matrix
+        disp = ConfusionMatrixDisplay.from_estimator(clf, x_test, y_test,
+                                                     display_labels=np.unique(np.array(self._training_labels)),
+                                                     cmap=plt.cm.Blues
+                                                     )
+        disp.ax_.set_title("Confusion matrix")
+        plt.show()
+        return
 
 
+# Old function
 def plot_features(dataset):
+    # # Code needed to create the dataset for this function
+    # index_1 = np.where(np.char.find(np.array(featurelist.type), 'ROE_70') + 1)[0]
+    # index_2 = np.where(np.char.find(np.array(featurelist.type), 'ROE_150') + 1)[0]
+    # index_3 = np.where(np.char.find(np.array(featurelist.type), 'ROE_300') + 1)[0]
+    #
+    # # Create signifiers of which category each datapoint belongs to
+    # intervals = []
+    # for i in index_1:
+    #     intervals.append(0)
+    # for i in index_2:
+    #     intervals.append(1)
+    #
+    # # Create datasets
+    # datasets1 = []
+    # datasets2 = []
+    # datasets3 = []
+    # for i in index_1:
+    #     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
+    #     datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
+    #     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
+    # for i in index_2:
+    #     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
+    #     datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
+    #     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
+    # datasets = [(np.array(datasets1), np.array(intervals)),
+    #             (np.array(datasets2), np.array(intervals)),
+    #             (np.array(datasets3), np.array(intervals))]
+    #
+    # plot_features(datasets)
+
     h = 0.02  # step size in the mesh
 
     names = [
@@ -255,6 +361,7 @@ type_list = find_annodir()
 
 # Run through all types
 for types in type_list:
+    print(f"Importing {types}")
     # Run through all subtypes
     for category in os.listdir(types):
         mask_path = os.listdir(f"{types}/{category}/rgbMasks")
@@ -266,50 +373,18 @@ for types in type_list:
                 if img is not None and np.mean(img) > 0:
                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
                     featurelist.create_features(cnt, hir, f"{types}_{category}")
+    if types == 'ROE':
+        print('Done import')
+        break
 
-classify = Classifier(featurelist.get_features(), featurelist.type)
-scores = classify.test_classifiers()
-exit(scores)
-
-# Generate labels
 labels = []
+for i in featurelist.type:
+    label, rest = i.split('_')
+    labels.append(label)
 
-labels.append(np.char.find(np.array(featurelist.type), 'AF') + 1)
-labels.append(np.char.find(np.array(featurelist.type), 'FS') + 2)
-labels.append(np.char.find(np.array(featurelist.type), 'GR') + 3)
-labels.append(np.char.find(np.array(featurelist.type), 'ROE') + 4)
-print(np.shape(labels)[0])
-print(np.shape(featurelist.type)[0])
-exit(0)
-
-
-exit(0)
-
-index_1 = np.where(np.char.find(np.array(featurelist.type), 'ROE_70') + 1)[0]
-index_2 = np.where(np.char.find(np.array(featurelist.type), 'ROE_150') + 1)[0]
-index_3 = np.where(np.char.find(np.array(featurelist.type), 'ROE_300') + 1)[0]
-
-# Create signifiers of which category each datapoint belongs to
-intervals = []
-for i in index_1:
-    intervals.append(0)
-for i in index_2:
-    intervals.append(1)
-
-# Create datasets
-datasets1 = []
-datasets2 = []
-datasets3 = []
-for i in index_1:
-    datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
-    datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
-for i in index_2:
-    datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
-    datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
-datasets = [(np.array(datasets1), np.array(intervals)),
-            (np.array(datasets2), np.array(intervals)),
-            (np.array(datasets3), np.array(intervals))]
-
-plot_features(datasets)
+clf = Classifier()
+clf.prepare_training_data(featurelist.get_features(), featurelist.type)
+clf.split_training_data()
+clf.best_classifiers()
+clf.train_classifier()
+clf.test_classifier()
