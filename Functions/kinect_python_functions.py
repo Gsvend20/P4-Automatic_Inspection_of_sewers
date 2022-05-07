@@ -1,6 +1,6 @@
 """
 Almost everything in here is based off https://github.com/KonstantinosAng
-A true master of the KinectV2
+A true master of the pykinect2
 God bless his soul
 """
 def _depth_to_color_rec(kinect, depth_space_point, depth_frame_data):
@@ -63,14 +63,14 @@ def _rgbd_converter(kinect, color_space_point, depth_frame, color_frame):
     depth2color_points = ctypes.cast(depth2color_points_type(), ctypes.POINTER(color_space_point))
     kinect._mapper.MapDepthFrameToColorSpace(ctypes.c_uint(512 * 424), depth_frame_data, kinect._depth_frame_data_capacity, depth2color_points)
 
-    colorXYs = np.copy(np.ctypeslib.as_array(depth2color_points, shape=(kinect.depth_frame_desc.Height * kinect.depth_frame_desc.Width,)))  # Convert ctype pointer to array
+    colorXYs = np.copy(np.ctypeslib.as_array(depth2color_points, shape=(424 * 512,)))  # Convert ctype pointer to array
     colorXYs = colorXYs.view(np.float32).reshape(colorXYs.shape + (-1,))  # Convert struct array to regular numpy array https://stackoverflow.com/questions/5957380/convert-structured-array-to-regular-numpy-array
     colorXYs += 0.5
-    colorXYs = colorXYs.reshape(kinect.depth_frame_desc.Height, kinect.depth_frame_desc.Width, 2).astype(np.int)
-    colorXs = np.clip(colorXYs[:, :, 0], 0, kinect.color_frame_desc.Width - 1)
-    colorYs = np.clip(colorXYs[:, :, 1], 0, kinect.color_frame_desc.Height - 1)
+    colorXYs = colorXYs.reshape(424, 512, 2).astype(np.int)
+    colorXs = np.clip(colorXYs[:, :, 0], 0, 1920 - 1)
+    colorYs = np.clip(colorXYs[:, :, 1], 0, 1080 - 1)
 
-    color_img = color_frame.reshape((kinect.color_frame_desc.Height, kinect.color_frame_desc.Width, 3)).astype(np.uint8)
+    color_img = color_frame.reshape((1080, 1920, 3)).astype(np.uint8)
     align_color_img = np.zeros((424, 512, 3), dtype=np.uint8)
     align_color_img[:, :] = color_img[colorYs, colorXs, :]
     return align_color_img
@@ -83,22 +83,16 @@ def record_rgbd(kinect_obj):
     return rgbd_frame
 
 
-def convert_to_rgbd(depth_frame, color_frame):
+def convert_to_rgbd(kinect_obj, depth_frame, color_frame):
     from pykinect2 import PyKinectV2
-    from pykinect2 import PyKinectRuntime
 
     # Unfortunatly we cannot use the ._mapper functions without connection to the kinect
-    kinect_obj = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth)
-
     rgbd_frame = _rgbd_converter(kinect_obj, PyKinectV2._ColorSpacePoint, depth_frame, color_frame)
     return rgbd_frame
 
-def convert_to_depthCamera(depth_frame):
+def convert_to_depthCamera(kinect_obj,depth_frame):
     from pykinect2 import PyKinectV2
-    from pykinect2 import PyKinectRuntime
 
     # Unfortunatly we cannot use the ._mapper functions without connection to the kinect
-    kinect_obj = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth)
-
     rgbd_frame = _depth_to_color_vid(kinect_obj, PyKinectV2._DepthSpacePoint, depth_frame)
     return rgbd_frame
