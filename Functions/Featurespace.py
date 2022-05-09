@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from matplotlib.colors import ListedColormap
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
@@ -99,36 +100,38 @@ class Classifier:
                                   "Neural Net",
                                   "AdaBoost",
                                   "Naive Bayes",
-                                  "QDA",
+                                  "QDA"
                                   ]
-        self._classifiers = [KNeighborsClassifier(3),
-                             SVC(kernel="linear", C=0.025),
-                             SVC(gamma=2, C=1),
-                             GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)),
-                                                       max_iter_predict=1000),
-                             DecisionTreeClassifier(max_depth=5),
-                             RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-                             MLPClassifier(alpha=1, max_iter=1000),
-                             AdaBoostClassifier(),
-                             GaussianNB(),
-                             QuadraticDiscriminantAnalysis(),
-                             ]
+        self._classifier_list = [KNeighborsClassifier(3),
+                                 SVC(kernel="linear", C=0.025),
+                                 SVC(gamma=2, C=1),
+                                 GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)),
+                                                           max_iter_predict=1000),
+                                 DecisionTreeClassifier(max_depth=5),
+                                 RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+                                 MLPClassifier(alpha=1, max_iter=1000),
+                                 AdaBoostClassifier(),
+                                 GaussianNB(),
+                                 QuadraticDiscriminantAnalysis()
+                                 ]
 
         self._training_features = None
         self._training_labels = None
         self._test_features = None
         self._test_labels = None
 
-        self._type_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
-        self._AF_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
-        self._FS_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
-        self._GR_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
-        self._ROE_classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
+        self._classifier = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
 
     # Scale and normalise training data to allow for model training
     def prepare_training_data(self, training_features, training_labels):
         self._training_features = StandardScaler().fit_transform(training_features)
-        self._training_labels = training_labels
+
+        # Only use main categories for labels
+        labels = []
+        for i in training_labels:
+            label, rest = i.split('_')
+            labels.append(label)
+        self._training_labels = labels
 
     # Create test data by splitting training set
     def split_training_data(self, test_ratio=0.4):
@@ -144,7 +147,7 @@ class Classifier:
     # Train selected classifier
     def train_classifier(self):
         if self._training_features is not None:
-            self._type_classifier.fit(self._training_features, self._training_labels)
+            self._classifier.fit(self._training_features, self._training_labels)
         else:
             exit('no training data available!')
 
@@ -153,34 +156,34 @@ class Classifier:
         np.set_printoptions(precision=2)  # TODO what this do?
 
         # Plot non-normalized confusion matrix
-        disp = ConfusionMatrixDisplay.from_estimator(self._type_classifier,
+        disp = ConfusionMatrixDisplay.from_estimator(self._classifier,
                                                      self._test_features,
                                                      self._test_labels,
                                                      display_labels=np.unique(np.array(self._test_labels)),
                                                      cmap=plt.cm.Blues)
-        disp.ax_.set_title("Confusion matrix for type classifier")
+        disp.ax_.set_title("Confusion matrix for classifier")
         plt.show()
 
     # Save trained classifiers in dump file for future use
-    def save_trained_classifier(self):
-        # TODO: Enable saving with pickle dump
-        pass
+    def save_trained_classifier(self, file_path):
+        with open(file_path, 'wb') as file:
+            pickle.dump(self._classifier, file)
 
     # Load trained classifier from dump file for use in this program
-    def load_trained_classifier(self):
-        # TODO: Enable saving with pickle dump
-        pass
+    def load_trained_classifier(self, file_path):
+        with open(file_path, 'rb') as file:
+            self._classifier = pickle.load(file)
 
     # Generate and print a list of the most suitable classifiers for selected classification
     def best_classifiers(self):
         # Check all available classifiers and return final scores
         score = []
-        for clf in self._classifiers:
+        for cf in self._classifier_list:
             # Train classifier
-            clf.fit(self._training_features, self._training_labels)
+            cf.fit(self._training_features, self._training_labels)
 
             # Score classifier
-            score.append(clf.score(self._test_features, self._test_labels))
+            score.append(cf.score(self._test_features, self._test_labels))
 
         # Make a list of the best classifiers for the dataset
         best_classifiers = []
@@ -192,28 +195,11 @@ class Classifier:
 
         print(best_classifiers)
 
-    def classify(self, test_data=None, test_labels=None):
-
-        # Normalise feature data
-        x = StandardScaler().fit_transform(self._training_features)
-
-        # Split data into test and training data
-        x_train, x_test, y_train, y_test = train_test_split(x, self._training_labels, test_size=0.4, random_state=42)
-
-        clf = GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)), max_iter_predict=1000)
-        clf.fit(x_train, y_train)
-        print(clf.score(x_test, y_test))
-
-        np.set_printoptions(precision=2)
-
-        # Plot non-normalized confusion matrix
-        disp = ConfusionMatrixDisplay.from_estimator(clf, x_test, y_test,
-                                                     display_labels=np.unique(np.array(self._training_labels)),
-                                                     cmap=plt.cm.Blues
-                                                     )
-        disp.ax_.set_title("Confusion matrix")
-        plt.show()
-        return
+    def classify(self, test_data, test_labels=None):
+        test_data = test_data.reshape(1, -1)
+        detected = self._classifier.predict(test_data)[0]
+        certainty = np.max(self._classifier.predict_proba(test_data))
+        return detected, certainty
 
 
 # Old function
@@ -377,14 +363,20 @@ for types in type_list:
         print('Done import')
         break
 
-labels = []
-for i in featurelist.type:
-    label, rest = i.split('_')
-    labels.append(label)
+classifier_path = 'test.pkl'
 
 clf = Classifier()
 clf.prepare_training_data(featurelist.get_features(), featurelist.type)
 clf.split_training_data()
+
+if os.path.exists(classifier_path):
+    clf.load_trained_classifier(classifier_path)
+else:
+    clf.train_classifier()
+    clf.save_trained_classifier(classifier_path)
+
 clf.best_classifiers()
-clf.train_classifier()
+
 clf.test_classifier()
+detected_class, detection_certainty = clf.classify(clf._test_features[0])
+print(f"Detected {detected_class} with a certainty of {detection_certainty}")
