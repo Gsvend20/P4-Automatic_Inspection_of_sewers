@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from os import listdir
 
-depth_folder = 'roots_traindata/20/depth/'
-ir_folder = 'roots_traindata/20/ir'
+depth_folder = 'Roe/20/depth/'
+ir_folder = 'Roe/20/ir'
 
 listofvids = listdir(depth_folder)
 
