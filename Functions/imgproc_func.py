@@ -81,3 +81,13 @@ def close_img(input_img, kernelErode, kernelDila):
     kernelDila = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelDila, kernelDila))
     Dilaimg = cv2.dilate(input_img, kernelDila)
     return cv2.erode(Dilaimg, kernelErode)
+
+
+# A function for reversing the 16bit to 8bit changes
+def convert_to_16(img):
+    if img.shape[2] == 3:
+      depth_hi_bytes, depth_lo_bytes, empty = cv2.split(img)
+      return depth_lo_bytes.astype('uint16') + np.left_shift(depth_hi_bytes.astype('uint16'), 8)
+    else:
+      print('Image ' + ' is not 3 channel')
+      return img
