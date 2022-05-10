@@ -117,5 +117,31 @@ def retrieve_trackbar(trackbar_name,img_window_name, odd_only=False):
 
 def define_trackbar(trackbar_name, img_window_name, max_min_values):
     cv2.namedWindow(img_window_name)
+    cv2.resizeWindow(img_window_name, 200, 400);
     min_val, max_val = max_min_values
     cv2.createTrackbar(trackbar_name, img_window_name, min_val, max_val, _nothing)
+
+
+def depth_to_display(depth_frame):
+    depth_segmentation_value = 256  # maximum value for each channel
+
+    # scale depth frame to fit within 3 channels of bit depth 8
+    depth_frame = depth_frame / 8192 * 3 * depth_segmentation_value
+
+    # segment depth image into 3 color channels for better visualisation
+    depth_frame_b = np.where(depth_frame > 2 * depth_segmentation_value - 1,
+                             cv2.subtract(depth_frame, 2 * depth_segmentation_value), np.zeros_like(depth_frame))
+    depth_frame = np.where(depth_frame > 2 * depth_segmentation_value - 1, np.zeros_like(depth_frame), depth_frame)
+    depth_frame_g = np.where(depth_frame > depth_segmentation_value - 1,
+                             cv2.subtract(depth_frame, depth_segmentation_value), np.zeros_like(depth_frame))
+    depth_frame_r = np.where(depth_frame > depth_segmentation_value - 1, np.zeros_like(depth_frame), depth_frame)
+
+    # Aligned and depth images have different shapes, so we check for both
+    shape = depth_frame_b.shape
+    if len(shape) <= 1:
+        depth_frame_color = cv2.merge([depth_frame_b[:, :, 0], depth_frame_g[:, :, 0], depth_frame_r[:, :, 0]])
+    else:
+        depth_frame_color = cv2.merge([depth_frame_b[:, :], depth_frame_g[:, :], depth_frame_r[:, :]])
+
+    depth_frame_color = depth_frame_color.astype(np.uint8)
+    return depth_frame_color
