@@ -92,3 +92,30 @@ def convert_to_16(img):
     else:
       print('Image ' + ' is not 3 channel')
       return img
+
+
+# This is just for trackbar callbacks
+def _nothing(x):
+    pass
+
+
+def retrieve_trackbar(trackbar_name,img_window_name, odd_only=False):
+    track_num = cv2.getTrackbarPos(trackbar_name, img_window_name)
+    if not odd_only:
+        return track_num
+    else:
+        if track_num == 0:
+            return track_num
+        else:
+            count = track_num % 2
+            if count == 0:
+                track_num += 1
+                return track_num
+            else:
+                return track_num
+
+
+def define_trackbar(trackbar_name, img_window_name, max_min_values):
+    cv2.namedWindow(img_window_name)
+    min_val, max_val = max_min_values
+    cv2.createTrackbar(trackbar_name, img_window_name, min_val, max_val, _nothing)
