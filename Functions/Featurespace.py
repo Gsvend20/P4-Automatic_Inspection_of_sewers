@@ -340,43 +340,43 @@ def find_annodir():
     os.chdir(path)
     folder_list = os.listdir()
     return folder_list
-
-
-featurelist = FeatureSpace()
-type_list = find_annodir()
-
-# Run through all types
-for types in type_list:
-    print(f"Importing {types}")
-    # Run through all subtypes
-    for category in os.listdir(types):
-        mask_path = os.listdir(f"{types}/{category}/rgbMasks")
-        # Get filenames
-        for images in mask_path:
-            # Load image
-            if images.endswith('.png'):
-                img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
-                if img is not None and np.mean(img) > 0:
-                    cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
-                    featurelist.create_features(cnt, hir, f"{types}_{category}")
-    if types == 'ROE':
-        print('Done import')
-        break
-
-classifier_path = 'test.pkl'
-
-clf = Classifier()
-clf.prepare_training_data(featurelist.get_features(), featurelist.type)
-clf.split_training_data()
-
-if os.path.exists(classifier_path):
-    clf.load_trained_classifier(classifier_path)
-else:
-    clf.train_classifier()
-    clf.save_trained_classifier(classifier_path)
-
-clf.best_classifiers()
-
-clf.test_classifier()
-detected_class, detection_certainty = clf.classify(clf._test_features[0])
-print(f"Detected {detected_class} with a certainty of {detection_certainty}")
+#
+#
+# featurelist = FeatureSpace()
+# type_list = find_annodir()
+#
+# # Run through all types
+# for types in type_list:
+#     print(f"Importing {types}")
+#     # Run through all subtypes
+#     for category in os.listdir(types):
+#         mask_path = os.listdir(f"{types}/{category}/rgbMasks")
+#         # Get filenames
+#         for images in mask_path:
+#             # Load image
+#             if images.endswith('.png'):
+#                 img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
+#                 if img is not None and np.mean(img) > 0:
+#                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
+#                     featurelist.create_features(cnt, hir, f"{types}_{category}")
+#     if types == 'ROE':
+#         print('Done import')
+#         break
+#
+# classifier_path = 'test.pkl'
+#
+# clf = Classifier()
+# clf.prepare_training_data(featurelist.get_features(), featurelist.type)
+# clf.split_training_data()
+#
+# if os.path.exists(classifier_path):
+#     clf.load_trained_classifier(classifier_path)
+# else:
+#     clf.train_classifier()
+#     clf.save_trained_classifier(classifier_path)
+#
+# clf.best_classifiers()
+#
+# clf.test_classifier()
+# detected_class, detection_certainty = clf.classify(clf._test_features[0])
+# print(f"Detected {detected_class} with a certainty of {detection_certainty}")
