@@ -116,8 +116,8 @@ def retrieve_trackbar(trackbar_name,img_window_name, odd_only=False):
 
 
 def define_trackbar(trackbar_name, img_window_name, max_min_values):
-    cv2.namedWindow(img_window_name)
-    cv2.resizeWindow(img_window_name, 200, 400);
+    cv2.namedWindow(img_window_name, cv2.WINDOW_AUTOSIZE)
+    #cv2.resizeWindow(img_window_name, 400, 400)
     min_val, max_val = max_min_values
     cv2.createTrackbar(trackbar_name, img_window_name, min_val, max_val, _nothing)
 

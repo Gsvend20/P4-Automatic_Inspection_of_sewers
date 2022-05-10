@@ -31,21 +31,13 @@ class FeatureSpace:
         self.ferets = []
         self.thinness = []
 
-    def create_features(self, contours, hierarchy, error_type):
+    def create_features(self, cnt, hrc, error_type):
         # saving type of data
         self.type.append(error_type)
-        hierarchy = hierarchy[0]  # Unpacking [[[[[[[hierarchy]]]]]]]
-        largest_area = 0
-        # TODO: only gets the biggest one for now
-        for k in range(len(contours)):
-            area = cv2.contourArea(contours[k])
-            if area > largest_area:
-                largest_area = area
-                cnt = contours[k]
-                hrc = np.array(hierarchy[k][2] != -1)
+        area = cv2.contourArea(cnt)
 
         # Check for holes
-        self.hierachy_Bool.append(int(hrc))
+        self.hierachy_Bool.append(hrc)
 
         # Center of mass
         M = cv2.moments(cnt)
@@ -60,7 +52,7 @@ class FeatureSpace:
 
         # Compactness
         x, y, w, h = cv2.boundingRect(cnt)
-        self.compactness.append(largest_area / (w * h))
+        self.compactness.append(area / (w * h))
 
         # Elongation of min area rect
         (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(cnt)
@@ -71,7 +63,7 @@ class FeatureSpace:
         self.ferets.append(max(width_elon, height_elon))
 
         # Thinness TODO: Needs normalisation
-        self.thinness.append(perimeter / largest_area)
+        self.thinness.append(perimeter / area)
 
     def get_features(self):
         features = []
