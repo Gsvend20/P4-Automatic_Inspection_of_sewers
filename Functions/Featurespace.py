@@ -32,46 +32,39 @@ class FeatureSpace:
         self.thinness = []
 
     def create_features(self, contours, hierarchy, error_type):
-        # saving type of data
-        self.type.append(error_type)
-        hierarchy = hierarchy[0]  # Unpacking [[[[[[[hierarchy]]]]]]]
-        largest_area = 0
-        # TODO: only gets the biggest one for now
-        for k in range(len(contours)):
-            area = cv2.contourArea(contours[k])
-            if area > largest_area:
-                largest_area = area
-                cnt = contours[k]
-                hrc = np.array(hierarchy[k][2] != -1)
+        area = cv2.contourArea(contours)
+        if area > 0:
+            # saving type of data
+            self.type.append(error_type)
 
-        # Check for holes
-        self.hierachy_Bool.append(int(hrc))
+            # Check for holes
+            self.hierachy_Bool.append(hierarchy)
 
-        # Center of mass
-        M = cv2.moments(cnt)
-        self.centerX.append(int(M['m10'] / M['m00']))
-        self.centerY.append(int(M['m01'] / M['m00']))
+            # Center of mass
+            M = cv2.moments(contours)
+            self.centerX.append(int(M['m10'] / M['m00']))
+            self.centerY.append(int(M['m01'] / M['m00']))
 
-        # Detect jaggedness of edges
-        perimeter = cv2.arcLength(cnt, True)
-        hull = cv2.convexHull(cnt)
-        hullperimeter = cv2.arcLength(hull, True)
-        self.convex_ratio_perimeter.append(hullperimeter / perimeter)
+            # Detect jaggedness of edges
+            perimeter = cv2.arcLength(contours, True)
+            hull = cv2.convexHull(contours)
+            hullperimeter = cv2.arcLength(hull, True)
+            self.convex_ratio_perimeter.append(hullperimeter / perimeter)
 
-        # Compactness
-        x, y, w, h = cv2.boundingRect(cnt)
-        self.compactness.append(largest_area / (w * h))
+            # Compactness
+            x, y, w, h = cv2.boundingRect(contours)
+            self.compactness.append(area / (w * h))
 
-        # Elongation of min area rect
-        (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(cnt)
-        self.elongation.append(min(width_elon, height_elon) / max(width_elon, height_elon))
+            # Elongation of min area rect
+            (x_elon, y_elon), (width_elon, height_elon), angle = cv2.minAreaRect(contours)
+            self.elongation.append(min(width_elon, height_elon) / max(width_elon, height_elon))
 
-        # Longest internal line and its angle
-        self.ferets_angle.append(angle)
-        self.ferets.append(max(width_elon, height_elon))
+            # Longest internal line and its angle
+            self.ferets_angle.append(angle)
+            self.ferets.append(max(width_elon, height_elon))
 
-        # Thinness TODO: Needs normalisation
-        self.thinness.append(perimeter / largest_area)
+            # Thinness TODO: Needs normalisation
+            self.thinness.append(perimeter / area)
 
     def get_features(self):
         features = []
@@ -341,42 +334,42 @@ def find_annodir():
     folder_list = os.listdir()
     return folder_list
 
-
-featurelist = FeatureSpace()
-type_list = find_annodir()
-
-# Run through all types
-for types in type_list:
-    print(f"Importing {types}")
-    # Run through all subtypes
-    for category in os.listdir(types):
-        mask_path = os.listdir(f"{types}/{category}/rgbMasks")
-        # Get filenames
-        for images in mask_path:
-            # Load image
-            if images.endswith('.png'):
-                img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
-                if img is not None and np.mean(img) > 0:
-                    cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
-                    featurelist.create_features(cnt, hir, f"{types}_{category}")
-    if types == 'ROE':
-        print('Done import')
-        break
-
-classifier_path = 'test.pkl'
-
-clf = Classifier()
-clf.prepare_training_data(featurelist.get_features(), featurelist.type)
-clf.split_training_data()
-
-if os.path.exists(classifier_path):
-    clf.load_trained_classifier(classifier_path)
-else:
-    clf.train_classifier()
-    clf.save_trained_classifier(classifier_path)
-
-clf.best_classifiers()
-
-clf.test_classifier()
-detected_class, detection_certainty = clf.classify(clf._test_features[0])
-print(f"Detected {detected_class} with a certainty of {detection_certainty}")
+#
+# featurelist = FeatureSpace()
+# type_list = find_annodir()
+#
+# # Run through all types
+# for types in type_list:
+#     print(f"Importing {types}")
+#     # Run through all subtypes
+#     for category in os.listdir(types):
+#         mask_path = os.listdir(f"{types}/{category}/rgbMasks")
+#         # Get filenames
+#         for images in mask_path:
+#             # Load image
+#             if images.endswith('.png'):
+#                 img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
+#                 if img is not None and np.mean(img) > 0:
+#                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
+#                     featurelist.create_features(cnt, hir, f"{types}_{category}")
+#     if types == 'ROE':
+#         print('Done import')
+#         break
+#
+# classifier_path = 'test.pkl'
+#
+# clf = Classifier()
+# clf.prepare_training_data(featurelist.get_features(), featurelist.type)
+# clf.split_training_data()
+#
+# if os.path.exists(classifier_path):
+#     clf.load_trained_classifier(classifier_path)
+# else:
+#     clf.train_classifier()
+#     clf.save_trained_classifier(classifier_path)
+#
+# clf.best_classifiers()
+#
+# clf.test_classifier()
+# detected_class, detection_certainty = clf.classify(clf._test_features[0])
+# print(f"Detected {detected_class} with a certainty of {detection_certainty}")
