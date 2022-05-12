@@ -100,9 +100,28 @@ while True:
         hsi_aoi = cv2.bitwise_and(frame_hsi, frame_hsi, mask=bg_mask)
 
         # Create BLOB for GR from depth frames
-        #gr_dep_mask = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
-        gr_dep_mask = cv2.inRange(frame_bgrd, 1000, 1200)
+        gr_dep_mask = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        gr_dep_mask = cv2.inRange(gr_dep_mask, 1000, 1200)
         gr_dep_mask = imf.open_img(gr_dep_mask, 15, 15)
+
+
+        depth_edges = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        depth_edges = depth_edges - np.amin(depth_edges)
+        depth_edges = depth_edges * 255.0 / (np.amax(depth_edges) - np.amin(depth_edges))
+        depth_edges = np.uint8(depth_edges)
+        canny = cv2.Canny(depth_edges, 20, 255)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        canny = cv2.dilate(canny, kernel, iterations=1)
+
+        # Remove circular patterns
+        imf.resize_image(canny, 'GR', 0.5)
+        circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 0, minRadius=50)
+        if circles is not None:
+            for cir in circles[0]:
+                cv2.circle(canny, (int(cir[0]), int(cir[1])), int(cir[2]), 150, 5)
+
+        comb = cv2.bitwise_and(canny, gr_dep_mask)
+        imf.resize_image(canny, 'GR_no circle', 0.5)
 
         #gr_dep_contours, _ = cv2.findContours(gr_dep_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         #gr_draw = frame_bgr.copy()
@@ -113,19 +132,19 @@ while True:
         hsi_thresh = cv2.inRange(hsi_aoi, hsi_lb, hsi_ub)
         hsi_thresh = imf.open_img(hsi_thresh, 5, 5)  # denoise
 
-        sobelx = cv2.Sobel(frame_bgrd, cv2.CV_64F, 1, 0, ksize=7)
-        sobely = cv2.Sobel(frame_bgrd, cv2.CV_64F, 0, 1, ksize=7)
-        sobel = cv2.add(sobelx, sobely)
-        print(f"{np.min(sobel)} {np.max(sobel)}")
-        #sobel = cv2.dilate(sobel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=3)
-        #smin = imf.retrieve_trackbar('min', 'trackbars')
-        #smax = imf.retrieve_trackbar('max', 'trackbars')
-        # TODO: MAYBE MAYBE MAYBE
-        sobel_thresh_high = cv2.inRange(sobel, np.max(sobel)*0.50, np.max(sobel)*0.9)
-        sobel_thresh_low = cv2.inRange(sobel, -np.max(sobel)*0.9, -np.max(sobel)*0.50)
-        sobel_thresh = cv2.add(sobel_thresh_high, sobel_thresh_low)
-        sobel_thresh = cv2.dilate(sobel_thresh, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
-        imf.resize_image(sobel_thresh, 'sobel', 0.5)
+        # sobelx = cv2.Sobel(frame_bgrd, cv2.CV_64F, 1, 0, ksize=7)
+        # sobely = cv2.Sobel(frame_bgrd, cv2.CV_64F, 0, 1, ksize=7)
+        # sobel = cv2.add(sobelx, sobely)
+        # print(f"{np.min(sobel)} {np.max(sobel)}")
+        # #sobel = cv2.dilate(sobel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=3)
+        # #smin = imf.retrieve_trackbar('min', 'trackbars')
+        # #smax = imf.retrieve_trackbar('max', 'trackbars')
+        # # TODO: MAYBE MAYBE MAYBE no
+        # sobel_thresh_high = cv2.inRange(sobel, np.max(sobel)*0.50, np.max(sobel)*0.9)
+        # sobel_thresh_low = cv2.inRange(sobel, -np.max(sobel)*0.9, -np.max(sobel)*0.50)
+        # sobel_thresh = cv2.add(sobel_thresh_high, sobel_thresh_low)
+        # sobel_thresh = cv2.dilate(sobel_thresh, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
+        # imf.resize_image(sobel_thresh, 'sobel', 0.5)
 
         # Combine masks
         combined_mask = cv2.bitwise_or(gr_dep_mask, hsi_thresh, mask=bg_mask)
@@ -139,6 +158,7 @@ while True:
         #imf.resize_image(diff, 'results', 0.5)
 
         # Get edges in depth data
+        # TODO Try this with hough to remove circles
         # depth_edges = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
         # depth_edges = depth_edges - np.amin(depth_edges)
         # depth_edges = depth_edges * 255.0 / (np.amax(depth_edges) - np.amin(depth_edges))
