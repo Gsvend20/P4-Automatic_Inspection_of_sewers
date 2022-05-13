@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import glob
 from matplotlib.colors import ListedColormap
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
@@ -41,8 +42,8 @@ class FeatureSpace:
 
         # Center of mass
         M = cv2.moments(cnt)
-        self.centerX.append(int(M['m10'] / M['m00']))
-        self.centerY.append(int(M['m01'] / M['m00']))
+        self.centerX.append(int(M['m10'] / M['m00'])/1080*3)    # Division is to normalise according to the image
+        self.centerY.append(int(M['m01'] / M['m00'])/1960*3)
 
         # Detect jaggedness of edges
         perimeter = cv2.arcLength(cnt, True)
@@ -59,11 +60,13 @@ class FeatureSpace:
         self.elongation.append(min(width_elon, height_elon) / max(width_elon, height_elon))
 
         # Longest internal line and its angle
-        self.ferets_angle.append(angle)
-        self.ferets.append(max(width_elon, height_elon))
+        self.ferets_angle.append((angle+180)/360) # angle is -180/180 degress, so we make it all positive and normalise
 
-        # Thinness TODO: Needs normalisation
-        self.thinness.append(perimeter / area)
+        # TODO: check if 800 fits the ferets found
+        self.ferets.append(max(width_elon, height_elon)/800) # divide by 800 to normalise
+
+        # Thinness TODO: Check normalisation
+        self.thinness.append(perimeter / area * 6) # Multiply by 6 to bring the thinness average closer to one
 
     def get_features(self):
         features = []
@@ -116,14 +119,9 @@ class Classifier:
 
     # Scale and normalise training data to allow for model training
     def prepare_training_data(self, training_features, training_labels):
-        self._training_features = StandardScaler().fit_transform(training_features)
-
-        # Only use main categories for labels
-        labels = []
-        for i in training_labels:
-            label, rest = i.split('_')
-            labels.append(label)
-        self._training_labels = labels
+        #self._training_features = StandardScaler().fit_transform(training_features)
+        self._training_features = training_features
+        self._training_labels = training_labels
 
     # Create test data by splitting training set
     def split_training_data(self, test_ratio=0.4):
@@ -327,12 +325,12 @@ def plot_features(dataset):
     return
 
 
-def find_annodir():
-    path = os.getcwd().replace("\Functions", "\Training\Annotations")
-    os.chdir(path)
-    folder_list = os.listdir()
-    return folder_list
-#
+def find_annodir(path):
+    folder_list = []
+    class_name = os.listdir(path)
+    for categories in class_name:
+        folder_list.append(glob.glob(path.replace('\\','/') + '/' + categories + '/**/rgbMasks/*.png', recursive=True))
+    return class_name, folder_list
 #
 # featurelist = FeatureSpace()
 # type_list = find_annodir()
