@@ -22,6 +22,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 class FeatureSpace:
     def __init__(self):
         self.type = []
+        self.area = []
         self.centerX = []
         self.centerY = []
         self.convex_ratio_perimeter = []
@@ -36,7 +37,7 @@ class FeatureSpace:
         # saving type of data
         self.type.append(error_type)
         area = cv2.contourArea(cnt)
-
+        self.area.append(area/(1960*1080*0.2))
         # Check for holes
         self.hierachy_Bool.append(hrc)
 
@@ -74,7 +75,7 @@ class FeatureSpace:
             features.append([self.centerX[i],
                              self.centerY[i],
                              self.convex_ratio_perimeter[i],
-                             # self.hierachy_Bool[i],
+                             self.area[i],
                              self.compactness[i],
                              self.elongation[i],
                              # self.ferets_angle[i],

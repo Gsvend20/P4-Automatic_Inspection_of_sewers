@@ -16,6 +16,8 @@ def find_largest(contours, hierarchy):
             largest_no = n
     return contours[largest_no], hierarchy[largest_no]
 
+# TODO: FIX FS false positives
+# TODO: Get better training data
 
 """
 
@@ -25,7 +27,7 @@ eg. ./AF/Class 1/9/rgbMasks/*.png
 
 """
 
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 # Definitions used for the sklearn classifier
 feature_space = []
 label_list = []
@@ -47,7 +49,7 @@ for category, img_folders in zip(class_name, anotations):
         # read through all the pictures
         img = cv2.imread(img_path, 0)
         if img is not None and np.mean(img) > 0:
-            contours, hierarchy = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+            contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             cnt, hir = find_largest(contours, hierarchy[0])
             if cv2.contourArea(cnt) > 0:
                 f.create_features(cnt, hir[2] != -1, f"{category}")
@@ -67,14 +69,15 @@ TESTING AREA, TOO CHECK HOW WELL IT WORKS
 
 for category in class_name:
     depth_paths = glob.glob(path.replace('\\', '/') + '/' + category + '/**/*aligned*.png', recursive=True)
-    for i in range(25,35):
+    for i in range(120,125):
         depth_path = depth_paths[i]
         bgr_path = depth_path.replace('aligned','bgr')
 
         depth_img = imf.convert_to_16(cv2.imread(depth_path))
         bgr_img = cv2.imread(bgr_path)
+        draw_frame = np.zeros_like(bgr_img)
 
-        blur = cv2.medianBlur(bgr_img, 7)
+        blur = cv2.medianBlur(bgr_img, 13)
 
         frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
 
@@ -95,24 +98,27 @@ for category in class_name:
         blue_uppervalues = [124, 119, 148]
         blue_lowervalues = [84, 37, 61]
 
-        upperLimit1 = np.array(hls_uppervalues)
-        lowerLimit1 = np.array(hls_lowervalues)  # Threshold around highlights
+        scr_uppervalues = [129, 94, 56]
+        scr_lowervalues = [70, 16, 34]
 
-        upperLimit2 = np.array(blue_uppervalues)
-        lowerLimit2 = np.array(blue_lowervalues)  # Remove blue, due to the piece of cloth
-
-        mask1 = cv2.inRange(hsi_aoi, lowerLimit1, upperLimit1)
-        mask2 = cv2.inRange(hsi_aoi, lowerLimit2, upperLimit2)
+        mask1 = cv2.inRange(frame_hsi, np.asarray(hls_lowervalues),
+                            np.asarray(hls_uppervalues))  # Threshold around highlights
+        mask2 = cv2.inRange(frame_hsi, np.asarray(blue_lowervalues),
+                            np.asarray(blue_uppervalues))  # Remove blue, due to the piece of cloth
+        mask3 = cv2.inRange(frame_hsi, np.asarray(scr_lowervalues),
+                            np.asarray(scr_uppervalues))  # Remove blue, due to scratches
 
         hsi_thresh = cv2.subtract(mask1, mask2)
+        hsi_thresh = cv2.subtract(hsi_thresh, mask3)
+
         bin = imf.open_img(hsi_thresh, 3, 3)
 
-        contours, hierarchy = cv2.findContours(bin, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        contours, hierarchy = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if hierarchy is not None:
             hierarchy = hierarchy[0]  # [[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]
             draw_frame = bgr_img.copy()
             for cnt, hrc in zip(contours, hierarchy):
-                if cv2.contourArea(cnt) >= 100:
+                if cv2.contourArea(cnt) >= 50:
                     mask = np.zeros(bin.shape, np.uint8)
                     cv2.drawContours(mask, [cnt], 0, 255, -1)
                     mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
@@ -131,5 +137,6 @@ for category in class_name:
                         print(detected, probability)
 
         imf.resize_image(bin, 'binary', 0.4)
+        imf.resize_image(blur, 'blur frame', 0.4)
         imf.resize_image(draw_frame, 'results', 0.4)
         cv2.waitKey(0)
