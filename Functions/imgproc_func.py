@@ -145,3 +145,14 @@ def depth_to_display(depth_frame):
 
     depth_frame_color = depth_frame_color.astype(np.uint8)
     return depth_frame_color
+
+def save_depth_img(path, image):
+    rgbd_hi_bytes = np.right_shift(image, 8).astype('uint8')
+    rgbd_lo_bytes = image.astype('uint8')
+
+    shape = image.shape
+    if len(shape) <= 1:
+        split_rgbd_image = cv2.merge([rgbd_hi_bytes[:, :, 0], rgbd_lo_bytes[:, :, 0], np.zeros_like(rgbd_hi_bytes[:, :, 0])])
+    else:
+        split_rgbd_image = cv2.merge([rgbd_hi_bytes[:, :], rgbd_lo_bytes[:, :], np.zeros_like(rgbd_hi_bytes[:, :])])
+    cv2.imwrite(path,split_rgbd_image)

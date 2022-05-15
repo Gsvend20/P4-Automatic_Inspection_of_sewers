@@ -80,6 +80,7 @@ for category in class_name:
         blur = cv2.medianBlur(bgr_img, 13)
 
         frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
+        frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
         # Generate area of interest from pipe depth data
         aoi_end = cv2.inRange(depth_img, int(np.max(depth_img) - 100), int(np.max(depth_img)))
@@ -98,8 +99,11 @@ for category in class_name:
         blue_uppervalues = [124, 119, 148]
         blue_lowervalues = [84, 37, 61]
 
-        scr_uppervalues = [129, 94, 56]
-        scr_lowervalues = [70, 16, 34]
+        scr_uppervalues = [129, 103, 59]
+        scr_lowervalues = [70, 21, 32]
+
+        roe_uppervalues = [107, 114, 255]
+        roe_lowervalues = [72, 28, 150]
 
         mask1 = cv2.inRange(frame_hsi, np.asarray(hls_lowervalues),
                             np.asarray(hls_uppervalues))  # Threshold around highlights
@@ -107,11 +111,14 @@ for category in class_name:
                             np.asarray(blue_uppervalues))  # Remove blue, due to the piece of cloth
         mask3 = cv2.inRange(frame_hsi, np.asarray(scr_lowervalues),
                             np.asarray(scr_uppervalues))  # Remove blue, due to scratches
+        mask4 = cv2.inRange(frame_hsv, np.asarray(roe_lowervalues),
+                            np.asarray(roe_uppervalues))  # Add in some dark blue for roots
 
-        hsi_thresh = cv2.subtract(mask1, mask2)
+        hsi_thresh = cv2.add(mask1, mask4)
+        hsi_thresh = cv2.subtract(hsi_thresh, mask2)
         hsi_thresh = cv2.subtract(hsi_thresh, mask3)
 
-        bin = imf.open_img(hsi_thresh, 3, 3)
+        bin = imf.open_img(hsi_thresh, 5, 5)
 
         contours, hierarchy = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if hierarchy is not None:
