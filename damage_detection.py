@@ -102,11 +102,11 @@ class AdaptiveGRDepthMasker:
                     dist_array[i] = np.ma.mean(self.masked_image_list[i + 1]) - np.ma.mean(self.masked_image_list[i])
 
                     # Find differences between areas
-                    area_array[i] = 1920 * 1080 - np.ma.count_masked(masked_image)
+                    #area_array[i] = 1920 * 1080 - np.ma.count_masked(masked_image)
                 mean_dist_change = np.mean(dist_array)
                 #last_mean_dist = np.ma.mean(self.masked_image_list[-1])
-                median_area_change = np.mean(area_array)
-                print(median_area_change)
+                #median_area_change = np.mean(area_array)
+                #print(median_area_change)
 
                 # Adjust searching range and area
                 if not np.isnan(mean_dist_change):
