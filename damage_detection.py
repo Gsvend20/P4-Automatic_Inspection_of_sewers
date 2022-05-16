@@ -13,61 +13,182 @@ folders_path = 'Test'
 vid_bgr = cv2.VideoCapture()
 vid_bgrd = cv2.VideoCapture()
 
-#trackbars = ['high_H', 'low_H','high_L', 'low_L', 'high_S', 'low_S']
-trackbars = ['sigma']
-hls_values = [255, 70, 255, 37, 255, 24]
-
 # Trackbars for adjusting values
-imf.define_trackbar('Kernel', 'trackbars', (3, 31))
-for tracks in trackbars:
-    imf.define_trackbar(tracks, 'trackbars', (150, 1000))
+# imf.define_trackbar('Blur level', 'trackbars', (0, 31))
+#imf.define_trackbar('min', 'trackbars', (500, 2000000))
+#imf.define_trackbar('max', 'trackbars', (500, 2000000))
+#imf.define_trackbar('Closing level', 'trackbars', (0, 255))
+#imf.define_trackbar('Min depth', 'trackbars', (500, 1500))
+imf.define_trackbar('Kernel', 'trackbars', (3, 30))
+hls_values = [255, 70, 255, 38, 255, 24]
 
-P=0
 # load classifier
-classifier = Classifier()
-classifier.load_trained_classifier('classifier.pkl')
-print(classifier._classifier)
+#classifier = Classifier()
+#classifier.load_trained_classifier('training_data.pkl')
 
 while True:
-    vid_bgr.open(f"{folders_path}/24_1_bgr.avi")
-    vid_bgrd.open(f"{folders_path}/24_1_aligned.avi")
+    vid_bgr.open(f"{folders_path}/2_bgr.avi")
+    vid_bgrd.open(f"{folders_path}/2_aligned.avi")
 
     while vid_bgr.isOpened():
         # Fetch next frame
-        if not P:
-            ret, frame_bgr = vid_bgr.read()
-            if not ret:
-                break
-            ret, frame_bgrd_8bit = vid_bgrd.read()
-            if not ret:
-                break
+        ret, frame_bgr = vid_bgr.read()
+        if not ret:
+            break
+        ret, frame_bgrd_8bit = vid_bgrd.read()
+        if not ret:
+            break
         # Convert depthmap to 16 bit depth
         frame_bgrd = imf.convert_to_16(frame_bgrd_8bit)
 
         #frame_bgrd = cv2.GaussianBlur(frame_bgrd, (5, 5), 0)
-        blur = cv2.medianBlur(frame_bgr, 7)
+        frame_bgr = cv2.medianBlur(frame_bgr, 5)
 
-        frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
-        frame_grey = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
-        trackbar_data = [None] * len(trackbars)
-        for i, tracks in enumerate(trackbars):
-            trackbar_data[i] = imf.retrieve_trackbar(tracks, 'trackbars')
+        frame_hsi = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HLS)
+        grey_frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        #
+        # # Remove noise
+        # kblur = imf.retrieve_trackbar('Blur level', 'trackbars', True)
+        # if kblur >= 3:
+        #     grey_frame = cv2.medianBlur(grey_frame, kblur)
+        #
+        # # Edge detection in grayscale
+        # cmin = imf.retrieve_trackbar('Canny min', 'trackbars')
+        # cmax = imf.retrieve_trackbar('Canny max', 'trackbars')
+        # grey_frame = cv2.Canny(grey_frame, cmin, cmax)
+        #
+        # clev = imf.retrieve_trackbar('Closing level', 'trackbars', True)
+        # if clev >= 3:
+        #     grey_frame = imf.close_img(grey_frame, clev, clev)
+
+        # Threshold viewing range in depth image to generate aoi
+        #dmin = imf.retrieve_trackbar('Min depth', 'trackbars')
+        #dmax = int(np.max(frame_bgrd) - 300)
+        #aoi_near = cv2.inRange(frame_bgrd, dmin, dmax)
+
+        #dmax = int(np.max(frame_bgrd) + imf.retrieve_trackbar('Max depth', 'trackbars'))
 
         # Generate area of interest from pipe depth data
-        aoi_end = cv2.inRange(frame_bgrd, int(np.max(frame_bgrd) - 100), int(np.max(frame_bgrd)))
-        aoi_pipe = cv2.inRange(frame_bgrd, 600, int(np.max(frame_bgrd) - 100))
-        cnt, hir = cv2.findContours(aoi_pipe, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        aoi_end = cv2.inRange(frame_bgrd, int(np.max(frame_bgrd) - 320), int(np.max(frame_bgrd) + 100))
+        aoi_pipe = cv2.inRange(frame_bgrd, 600, int(np.max(frame_bgrd) - 300))
+        pipe_contours, _ = cv2.findContours(aoi_pipe, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         pipe_mask = np.zeros_like(frame_bgrd).astype('uint8')
-        pipe_mask = cv2.fillPoly(pipe_mask, cnt, 255)
+        pipe_mask = cv2.fillPoly(pipe_mask, pipe_contours, 255)
         bg_mask = cv2.subtract(pipe_mask, aoi_end)
-        bg_mask = cv2.dilate(bg_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)))
+        #bg_mask = cv2.dilate(bg_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31)))
         hsi_aoi = cv2.bitwise_and(frame_hsi, frame_hsi, mask=bg_mask)
 
-        #Vlow = imf.retrieve_trackbar('low', 'trackbars')
-        upperLimit1 = np.array([hls_values[0], hls_values[2], hls_values[4]])
-        lowerLimit1 = np.array([hls_values[1], hls_values[3], hls_values[5]])  # Threshold around highlights
+        # Get mask for ROE, FS, and AF by HSI thresholding
+        hsi_ub = np.array([hls_values[0], hls_values[2], hls_values[4]])
+        hsi_lb = np.array([hls_values[1], hls_values[3], hls_values[5]])
+        hsi_thresh = cv2.inRange(hsi_aoi, hsi_lb, hsi_ub)
+        hsi_thresh = imf.open_img(hsi_thresh, 5, 5)  # denoise
 
-        hsi_thresh = cv2.inRange(hsi_aoi, lowerLimit1, upperLimit1)
+        # Create BLOB for GR from depth frames
+        gr_dep_mask = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        gr_dep_mask = cv2.inRange(gr_dep_mask, 1000, 1500)
+        #imf.resize_image(gr_dep_mask, 'GR_detection_band', 0.5)
+        # gr_dep_mask = imf.open_img(gr_dep_mask, 15, 15)
+        # H = (imf.retrieve_trackbar('H min', 'trackbars'), imf.retrieve_trackbar('H max', 'trackbars'))
+        # I = (imf.retrieve_trackbar('I min', 'trackbars'), imf.retrieve_trackbar('I max', 'trackbars'))
+        # S = (imf.retrieve_trackbar('S min', 'trackbars'), imf.retrieve_trackbar('S max', 'trackbars'))
+        # gr_mask = cv2.inRange(cv2.bitwise_and(frame_hsi, frame_hsi, mask=bg_mask), (H[0], I[0], S[0]), (H[1], I[1], S[1]))
+
+        # Canny Edges on depth image
+        depth_edges = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        depth_edges = depth_edges - np.amin(depth_edges)
+        depth_edges = depth_edges * 255.0 / (np.amax(depth_edges) - np.amin(depth_edges))
+        depth_edges = np.uint8(depth_edges)
+        depth_edges = cv2.Canny(depth_edges, 20, 255, apertureSize=3)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        depth_edges = imf.close_img(depth_edges, 21, 21)
+        depth_edges = cv2.dilate(depth_edges, kernel, iterations=3)
+        # imf.resize_image(depth_edges, 'Depth_edges', 0.5)
+
+        # Canny edges on intensity image
+        intensity_edges = cv2.Canny(hsi_aoi[:,:,1], 20, 255, apertureSize=3)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        intensity_edges = imf.close_img(intensity_edges, 11, 11)
+        intensity_edges = cv2.dilate(intensity_edges, kernel, iterations=3)
+        # imf.resize_image(intensity_edges, 'Pipe4', 0.5)
+
+        fg_d_frame = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        depth_masker.add_image(fg_d_frame)
+        depth_masker.show()
+
+        # grey_edges = cv2.bitwise_and(grey_frame, grey_frame, mask=bg_mask)
+        # grey_edges = cv2.Canny(grey_edges, 20, 255, apertureSize=3)
+        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        # grey_edges = cv2.dilate(grey_edges, kernel, iterations=3)
+
+        gr_edge = cv2.add(intensity_edges,depth_edges)
+
+        # Remove circular patterns
+        # circles = cv2.HoughCircles(gr_edge, cv2.HOUGH_GRADIENT, 1, 1, minRadius=10, maxRadius=300)
+        # draw_circles = np.zeros_like(bg_mask)
+        # if circles is not None:
+        #     for cir in circles[0]:
+        #         cv2.circle(draw_circles, (int(cir[0]), int(cir[1])), int(cir[2]), 150, 10)
+        # imf.resize_image(draw_circles, 'circles', 0.5)
+
+        # result = hough_ellipse(gr_edge, 250, 22, min_size=10)
+        # result.sort(order='accumulator')
+        # best = list(result[-1])
+        # yc, xc, a, b = [int(round(x)) for x in best[1:5]]
+        # orientation = best[5]
+        # cy, cx = ellipse_perimeter(yc, xc, a, b, orientation)
+        # ellipse = np.zeros_like(bg_mask)
+        # ellipse[cy, cx] = 255
+        # imf.resize_image(ellipse, 'ellipse', 0.5)
+
+        gr_mask = cv2.subtract(gr_dep_mask, gr_edge)
+        #imf.resize_image(gr_mask, 'GR_edgeremoved', 0.5)
+
+        # find center of mass for pipe
+        for cnt in pipe_contours:
+            area = cv2.contourArea(cnt)
+            if area > 0:
+                pipe_x, pipe_y, pipe_len_x, pipe_len_y = cv2.boundingRect(cnt)
+                pipe_com = (int(pipe_x + pipe_len_x / 2), int(pipe_y + pipe_len_y / 2))
+
+        gr_contours, _ = cv2.findContours(gr_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        for cnt in gr_contours:
+            area = cv2.contourArea(cnt)
+            if area > 0:
+                x, y, len_x, len_y = cv2.boundingRect(cnt)
+                center_of_mass = (int(x + len_x / 2), int(y + len_y / 2))
+
+                if not pipe_com[0] - 100 < center_of_mass[0] <= pipe_com[0] + 100:
+                    if not pipe_com[1] - 100 < center_of_mass[1] <= pipe_com[1] + 100:
+                        cv2.drawContours(hsi_thresh, [cnt], -1, 255, -1)
+
+        # sobelx = cv2.Sobel(frame_bgrd, cv2.CV_64F, 1, 0, ksize=7)
+        # sobely = cv2.Sobel(frame_bgrd, cv2.CV_64F, 0, 1, ksize=7)
+        # sobel = cv2.add(sobelx, sobely)
+        # print(f"{np.min(sobel)} {np.max(sobel)}")
+        # #sobel = cv2.dilate(sobel, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=3)
+        # #smin = imf.retrieve_trackbar('min', 'trackbars')
+        # #smax = imf.retrieve_trackbar('max', 'trackbars')
+        # # TODO: MAYBE MAYBE MAYBE no
+        # sobel_thresh_high = cv2.inRange(sobel, np.max(sobel)*0.50, np.max(sobel)*0.9)
+        # sobel_thresh_low = cv2.inRange(sobel, -np.max(sobel)*0.9, -np.max(sobel)*0.50)
+        # sobel_thresh = cv2.add(sobel_thresh_high, sobel_thresh_low)
+        # sobel_thresh = cv2.dilate(sobel_thresh, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
+        # imf.resize_image(sobel_thresh, 'sobel', 0.5)
+
+        #imf.resize_image(hsi_thresh, 'Pipe2', 0.5)
+
+        # Combine masks
+        combined_mask = cv2.bitwise_or(gr_dep_mask, hsi_thresh, mask=bg_mask)
+        combined_mask = imf.close_img(combined_mask, 5, 5)
+        comb_contours, comb_hierarchy = cv2.findContours(combined_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+        hsi_aoi = cv2.bitwise_and(frame_bgr, frame_bgr, mask=hsi_thresh)
+
+        fg_bgr = cv2.bitwise_and(frame_bgr, frame_bgr, mask=bg_mask)
+        imf.resize_image(fg_bgr, 'Pipe', 0.5)
+        diff = cv2.bitwise_and(frame_bgr, fg_bgr)
+        #imf.resize_image(diff, 'results', 0.5)
 
         # Get edges in depth data
         v = np.median(frame_hsi[:, :, 1])
@@ -87,16 +208,30 @@ while True:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
         canny = cv2.Canny(frame_hsi[:,:,1], low, high)
+        # TODO Try this with hough to remove circles
+        # depth_edges = cv2.bitwise_and(frame_bgrd, frame_bgrd, mask=bg_mask)
+        # depth_edges = depth_edges - np.amin(depth_edges)
+        # depth_edges = depth_edges * 255.0 / (np.amax(depth_edges) - np.amin(depth_edges))
+        # depth_edges = np.uint8(depth_edges)
+        # canny = cv2.Canny(depth_edges, 20, 255)
+        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        # canny = cv2.dilate(canny, kernel)
 
         kernel = imf.retrieve_trackbar('Kernel', 'trackbars', odd_only=True)
-        bin = cv2.add(hsi_thresh, canny)
+        bin = hsi_thresh#cv2.add(thresh_hsv, canny)
         bin = imf.open_img(bin, kernel, kernel)
-        contours, hierarchy = cv2.findContours(bin, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-        if hierarchy is not None:
-            hierarchy = hierarchy[0]  #[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]
+        # contours, hierarchy = cv2.findContours(bin, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # contour_area = []
+        # for i in range(len(contours)):
+        #     if cv2.contourArea(contours[i]) >= 100:
+        #         contour_area.append(contours[i])
+
+        # cnt_list = combine_contours(contour_area, gr_dep_contours, frame_bgr.shape)
+        if comb_hierarchy is not None:
+            hierarchy = comb_hierarchy[0] #[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]
             draw_frame = frame_bgr.copy()
-            for cnt, hrc in zip(contours, hierarchy):
-                if cv2.contourArea(cnt) >= 100:
+            for cnt, hrc in zip(comb_contours, hierarchy):
+                if cv2.contourArea(cnt) >= 10:
                     mask = np.zeros(bin.shape, np.uint8)
                     cv2.drawContours(mask, [cnt], 0, 255, -1)
                     mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
@@ -110,29 +245,24 @@ while True:
                     features = FeatureSpace()
                     features.create_features(cnt, np.array(hrc[2] != -1), 'test')
 
-                    detected, probability = classifier.classify(np.asarray(features.get_features()[0]))
-                    if probability > 0.25:
-                        print(features.get_features())
-                        print(detected, probability)
-
-            imf.resize_image(draw_frame, 'results', 0.5)
+                # detected, probability = classifier.classify(features.get_features())
+                # if probability >= 0.5:
+                #
 
 
         depth_display = imf.depth_to_display(frame_bgrd)
-        imf.resize_image(depth_display, 'aligned depth image', 0.5)
-        imf.resize_image(bin, 'thresh color image', 0.5)
-        imf.resize_image(canny, 'edges',0.5)
+
+        #imf.resize_image(depth_display, 'aligned depth image', 0.5)
+        #imf.resize_image(bin, 'thresh color image', 0.5)
+        #imf.resize_image(draw_frame, 'results', 0.5)
 
         key = cv2.waitKey(1)
         if key == ord('p'):
-            if P == 1:
-                P = 0
-            else:
-                P = 1
+            cv2.waitKey(5)
+            key = cv2.waitKey(0)
         if key == ord('q'):
             exit(0)
         elif key == ord('s'):
             for i in range(10):
                 frame_bgr = vid_bgr.read()
                 frame_bgrd_8bit = vid_bgrd.read()
-
