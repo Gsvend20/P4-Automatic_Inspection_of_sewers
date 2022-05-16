@@ -62,15 +62,15 @@ class TemporalMean:
 # Adjust frame range to keep area within frame
     # Find a way to stop this when the area gets too scuffed (look at size or touching edge of image maybe?)
 class AdaptiveGRDepthMasker:
-    def __init__(self, max_images, start_range, min_start_area):
-        self._image_list = []
-        self._mask_list = []
-        self.masked_image_list = []
+    def __init__(self, max_images, start_range, area_range):
+        self._image_list = [np.zeros((1920, 1080))]
+        self._mask_list = [np.zeros((1920, 1080))]
+        self.masked_image_list = [np.zeros((1920, 1080))]
         self._list_length = max_images
         self._range = start_range
         self.mask = np.zeros((1920, 1080))
-        self._area_min = min_start_area
-        self._area_max = 15000
+        self._area_min = area_range[0]
+        self._area_max = area_range[1]
 
     def add_image(self, image):  # Call function each frame to update mask
         # Generate mask
@@ -79,20 +79,26 @@ class AdaptiveGRDepthMasker:
         inv_mask = cv2.bitwise_not(mask)
         masked_image = np.ma.array(image, dtype='uint16', mask=inv_mask)
 
-        # Save masks for prediction
-        self._image_list.append(image)
-        self._mask_list.append(mask)
-        self.masked_image_list.append(masked_image)
+        # Check area by calculating number of masked pixels
+        mask_area = 1920 * 1080 - np.ma.count_masked(masked_image)
+        if self._area_min <= mask_area < self._area_max:
 
-        # Remove oldest mask to keep array at desired length
-        if len(self._image_list) > self._list_length:
-            self._image_list.pop(0)
-            self._mask_list.pop(0)
-            self.masked_image_list.pop(0)
+            # Calculate center of mass as average nonzero coordinate
+            #com_x = np.average(np.ma.nonzero(masked_image)[1])
+            #com_y = np.average(np.ma.nonzero(masked_image)[0])
+            #cv2.circle(image, (int(com_x), int(com_y)), 30, 255, 10)
+            #print(f"x: {com_x}, y: {com_y}")
 
-            # Check area by calculating number of masked pixels
-            mask_area = 1920 * 1080 - np.ma.count_masked(masked_image)
-            if self._area_min <= mask_area < self._area_max:
+            # Save masks for prediction
+            self._image_list.append(image)
+            self._mask_list.append(mask)
+            self.masked_image_list.append(masked_image)
+
+            # Remove oldest mask to keep array at desired length
+            if len(self._image_list) > self._list_length:
+                self._image_list.pop(0)
+                self._mask_list.pop(0)
+                self.masked_image_list.pop(0)
 
                 # Calculate new range for area and depth
                 dist_array = np.zeros(self._list_length - 1)
@@ -126,7 +132,7 @@ class AdaptiveGRDepthMasker:
         #print(np.ma.mean(self.masked_image_list[-1]))
 
 
-depth_masker = AdaptiveGRDepthMasker(3, (1400, 1500), 3200)
+depth_masker = AdaptiveGRDepthMasker(3, (1500, 1600), (3000, 40000))
 depth_mean = TemporalMean(3, (1920, 1080))
 
 # Path to video folders
