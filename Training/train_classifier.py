@@ -27,7 +27,7 @@ eg. ./AF/Class 1/9/rgbMasks/*.png
 
 """
 
-path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 # Definitions used for the sklearn classifier
 feature_space = []
 label_list = []
@@ -62,6 +62,10 @@ print('Training the classifier')
 c.prepare_training_data(feature_space, label_list)
 c.train_classifier()
 print('done importing')
+parent = os.path.dirname(os.getcwd())
+if not os.path.exists(parent+'/classifiers'):
+    os.makedirs(parent+'/classifiers')
+c.save_trained_classifier(parent+'/classifiers/annotated_training.pkl')
 
 """
 TESTING AREA, TOO CHECK HOW WELL IT WORKS
