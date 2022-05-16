@@ -63,19 +63,16 @@ class TemporalMean:
     # Find a way to stop this when the area gets too scuffed (look at size or touching edge of image maybe?)
 class AdaptiveGRDepthMasker:
     def __init__(self, max_images, start_range, area_range):
-        self._image_list = [np.zeros((1920, 1080))]
-        self._mask_list = [np.zeros((1920, 1080))]
-        self.masked_image_list = [np.zeros((1920, 1080))]
+        self.mask_list = [np.zeros((1920, 1080))]
+        self._masked_mean_depth_list = [0]
         self._list_length = max_images
         self._range = start_range
-        self.mask = np.zeros((1920, 1080))
         self._area_min = area_range[0]
         self._area_max = area_range[1]
 
     def add_image(self, image):  # Call function each frame to update mask
         # Generate mask
         mask = cv2.inRange(image, self._range[0], self._range[1])
-        #masked_image = cv2.bitwise_and(image, image, mask=mask)
         inv_mask = cv2.bitwise_not(mask)
         masked_image = np.ma.array(image, dtype='uint16', mask=inv_mask)
 
@@ -83,50 +80,35 @@ class AdaptiveGRDepthMasker:
         mask_area = 1920 * 1080 - np.ma.count_masked(masked_image)
         if self._area_min <= mask_area < self._area_max:
 
-            # Calculate center of mass as average nonzero coordinate
-            #com_x = np.average(np.ma.nonzero(masked_image)[1])
-            #com_y = np.average(np.ma.nonzero(masked_image)[0])
-            #cv2.circle(image, (int(com_x), int(com_y)), 30, 255, 10)
-            #print(f"x: {com_x}, y: {com_y}")
+            # Save mask for prediction
+            self.mask_list.append(mask)
 
-            # Save masks for prediction
-            self._image_list.append(image)
-            self._mask_list.append(mask)
-            self.masked_image_list.append(masked_image)
+            # Save mean depth in masked area
+            self._masked_mean_depth_list.append(np.ma.mean(masked_image))
 
             # Remove oldest mask to keep array at desired length
-            if len(self._image_list) > self._list_length:
-                self._image_list.pop(0)
-                self._mask_list.pop(0)
-                self.masked_image_list.pop(0)
+            if len(self.mask_list) > self._list_length:
+                self.mask_list.pop(0)
+                self._masked_mean_depth_list.pop(0)
 
                 # Calculate new range for area and depth
                 dist_array = np.zeros(self._list_length - 1)
-                area_array = np.zeros(self._list_length - 1)
                 for i in range(self._list_length - 1):
                     # Find differences between the mean distances of the saved images
-                    dist_array[i] = np.ma.mean(self.masked_image_list[i + 1]) - np.ma.mean(self.masked_image_list[i])
+                    dist_array[i] = self._masked_mean_depth_list[i + 1] - self._masked_mean_depth_list[i]
 
-                    # Find differences between areas
-                    #area_array[i] = 1920 * 1080 - np.ma.count_masked(masked_image)
                 mean_dist_change = np.mean(dist_array)
-                #last_mean_dist = np.ma.mean(self.masked_image_list[-1])
-                #median_area_change = np.mean(area_array)
-                #print(median_area_change)
 
                 # Adjust searching range and area
                 if not np.isnan(mean_dist_change):
                     self._range = (int(self._range[0] + mean_dist_change), int(self._range[1] + mean_dist_change))
-                    #self._range = (int(last_mean_dist + mean_dist_change - 50), int(last_mean_dist + mean_dist_change + 50))
-                    #self._area_min =
-                    #self._area_max =
 
     def show(self):
         # Show image
-        imf.resize_image(self._image_list[-1], 'GR_image', 0.5)
+        #imf.resize_image(self._image_list[-1], 'GR_image', 0.5)
 
         # Show mask
-        imf.resize_image(self._mask_list[-1], 'GR_mask', 0.5)
+        imf.resize_image(self.mask_list[-1], 'GR_mask', 0.5)
 
         # Show depth info in mask
         #print(np.ma.mean(self.masked_image_list[-1]))
