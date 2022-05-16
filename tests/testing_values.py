@@ -6,10 +6,13 @@ import glob
 
 # TODO: FIX FS thresholding, GR detection
 
-
+"""
+SÆT DIN PATH TIL DIT ONE DRIVE HER -> DOWNLOAD ANNOTATIONS MAPPEN FØRST
+"""
 # Path to folder containing the different classes
-#path = r'C:\Users\mikip\Desktop\annotations'
-path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+
+
 
 # Find what classes have been found
 class_name, anotations = find_annodir(path)
@@ -23,25 +26,25 @@ blue_values = [124, 84, 119, 37, 148, 61]
 
 scratches_values = [129, 70, 103, 21, 59, 32]
 
-roots_values = [107, 72, 114, 28, 255, 150]
+#roots_values = [107, 72, 114, 28, 255, 150]
 
 for i, tracks in enumerate(trackers):
-    imf.define_trackbar(tracks, 'trackbars 1', (hls_values[i], 255))
-    imf.define_trackbar(tracks, 'trackbars 2', (blue_values[i], 255))
-    imf.define_trackbar(tracks, 'trackbars 3', (scratches_values[i], 255))
-    imf.define_trackbar(tracks, 'trackbars 4', (roots_values[i], 255))
+    imf.define_trackbar(tracks, 'Base', (hls_values[i], 255))
+    imf.define_trackbar(tracks, 'Cloth', (blue_values[i], 255))
+    imf.define_trackbar(tracks, 'Scratches', (scratches_values[i], 255))
+    #imf.define_trackbar(tracks, 'ROE', (roots_values[i], 255))
 
 imf.define_trackbar('gaussian blur', 'processing', (0,1))
-imf.define_trackbar('kernel', 'processing', (3,21))
-imf.define_trackbar('low edge', 'processing', (3,100))
-imf.define_trackbar('high edge', 'processing', (3,100))
-imf.define_trackbar('edge color space', 'processing', (0,3))
+# imf.define_trackbar('kernel', 'processing', (3,21))
+# imf.define_trackbar('low edge', 'processing', (3,100))
+# imf.define_trackbar('high edge', 'processing', (3,100))
+# imf.define_trackbar('edge color space', 'processing', (0,3))
 
 for category in class_name:
     # D used to skip categories
     D = 0
     depth_paths = glob.glob(path.replace('\\', '/') + '/' + category + '/**/*aligned*.png', recursive=True)
-    for i in range(120,125):
+    for i in range(10,20):
 
         if D:
             break
@@ -74,14 +77,14 @@ for category in class_name:
             roe_low = []
 
             for i in range(0,len(trackers),2):
-                hls_up.append(imf.retrieve_trackbar(trackers[i], 'trackbars 1'))
-                hls_low.append(imf.retrieve_trackbar(trackers[i+1], 'trackbars 1'))
-                blue_up.append(imf.retrieve_trackbar(trackers[i], 'trackbars 2'))
-                blue_low.append(imf.retrieve_trackbar(trackers[i+1], 'trackbars 2'))
-                scr_up.append(imf.retrieve_trackbar(trackers[i], 'trackbars 3'))
-                scr_low.append(imf.retrieve_trackbar(trackers[i+1], 'trackbars 3'))
-                roe_up.append(imf.retrieve_trackbar(trackers[i], 'trackbars 4'))
-                roe_low.append(imf.retrieve_trackbar(trackers[i + 1], 'trackbars 4'))
+                hls_up.append(imf.retrieve_trackbar(trackers[i], 'Base'))
+                hls_low.append(imf.retrieve_trackbar(trackers[i+1], 'Base'))
+                blue_up.append(imf.retrieve_trackbar(trackers[i], 'Cloth'))
+                blue_low.append(imf.retrieve_trackbar(trackers[i+1], 'Cloth'))
+                scr_up.append(imf.retrieve_trackbar(trackers[i], 'Scratches'))
+                scr_low.append(imf.retrieve_trackbar(trackers[i+1], 'Scratches'))
+                roe_up.append(imf.retrieve_trackbar(trackers[i], 'ROE'))
+                roe_low.append(imf.retrieve_trackbar(trackers[i + 1], 'ROE'))
 
             # Generate area of interest from pipe depth data
             aoi_end = cv2.inRange(depth_img, int(np.max(depth_img) - 100), int(np.max(depth_img)))
@@ -96,23 +99,31 @@ for category in class_name:
             hsi_aoi = cv2.bitwise_and(frame_hsi, frame_hsi, mask=bg_mask)
 
             # Edge detection
-            edge_space = imf.retrieve_trackbar('edge color space', 'processing')
-            if edge_space == 0:
-                canny = cv2.Canny(frame_hsi[:, :, 0], imf.retrieve_trackbar('low edge', 'processing'), imf.retrieve_trackbar('high edge', 'processing'))
-                canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
-            elif edge_space == 1:
-                canny = cv2.Canny(frame_hsi[:, :, 1], imf.retrieve_trackbar('low edge', 'processing'),
-                                  imf.retrieve_trackbar('high edge', 'processing'))
-                canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
-            elif edge_space == 2:
-                canny = cv2.Canny(frame_hsi[:, :, 2], imf.retrieve_trackbar('low edge', 'processing'),
-                                  imf.retrieve_trackbar('high edge', 'processing'))
-                canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
-            elif edge_space == 3:
-                canny = cv2.Canny(imf.depth_to_display(depth_img), imf.retrieve_trackbar('low edge', 'processing'),
-                                  imf.retrieve_trackbar('high edge', 'processing'))
-                canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6)))
+            # edge_space = imf.retrieve_trackbar('edge color space', 'processing')
+            # if edge_space == 0:
+            #     canny = cv2.Canny(frame_hsi[:, :, 0], imf.retrieve_trackbar('low edge', 'processing'), imf.retrieve_trackbar('high edge', 'processing'))
+            #     canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+            # elif edge_space == 1:
+            #     canny = cv2.Canny(frame_hsi[:, :, 1], imf.retrieve_trackbar('low edge', 'processing'),
+            #                       imf.retrieve_trackbar('high edge', 'processing'))
+            #     canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+            # elif edge_space == 2:
+            #     canny = cv2.Canny(frame_hsi[:, :, 2], imf.retrieve_trackbar('low edge', 'processing'),
+            #                       imf.retrieve_trackbar('high edge', 'processing'))
+            #     canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+            # elif edge_space == 3:
+            #     canny = cv2.Canny(imf.depth_to_display(depth_img), imf.retrieve_trackbar('low edge', 'processing'),
+            #                       imf.retrieve_trackbar('high edge', 'processing'))
+            #     canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (6, 6)))
 
+            """
+            HER ER MASKS
+            mask1 = base
+            mask2 = cloth
+            mask3 = scratches
+            Hvis du vil have dem individuelt kan du ændre til "bin = open_img((din mask), 7,7)"
+            ellers kan du udkommentere subtract delene indtil det du gerne vil have
+            """
 
             mask1 = cv2.inRange(frame_hsi, np.asarray(hls_low),  np.asarray(hls_up))    # Threshold around highlights
             mask2 = cv2.inRange(frame_hsi,  np.asarray(blue_low),  np.asarray(blue_up))  # Remove blue, due to the piece of cloth
@@ -122,7 +133,7 @@ for category in class_name:
             hsi_thresh = cv2.add(mask1, mask4)
             hsi_thresh = cv2.subtract(hsi_thresh,mask2)
             hsi_thresh = cv2.subtract(hsi_thresh, mask3)
-            hsi_thresh = cv2.add(hsi_thresh, canny)
+            # hsi_thresh = cv2.add(hsi_thresh, canny)
             bin = imf.open_img(hsi_thresh, 7, 7)
 
 
@@ -130,7 +141,7 @@ for category in class_name:
             imf.resize_image(bin.copy(), 'binary', 0.4)
             imf.resize_image(blur, 'blur', 0.4)
             imf.resize_image(imf.depth_to_display(depth_img), 'depth', 0.4)
-            imf.resize_image(imf.depth_to_display(canny), 'canny', 0.4)
+            # imf.resize_image(imf.depth_to_display(canny), 'canny', 0.4)
 
             key = cv2.waitKey(1)
             if key == ord('q'):
