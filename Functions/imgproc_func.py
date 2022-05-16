@@ -156,3 +156,59 @@ def save_depth_img(path, image):
     else:
         split_rgbd_image = cv2.merge([rgbd_hi_bytes[:, :], rgbd_lo_bytes[:, :], np.zeros_like(rgbd_hi_bytes[:, :])])
     cv2.imwrite(path,split_rgbd_image)
+
+
+class AdaptiveGRDepthMasker:
+    def __init__(self, max_images, start_range, area_range):
+        self._mask_list = [np.zeros((1920, 1080), dtype='uint8')]
+        self._masked_mean_depth_list = [0]
+        self._list_length = max_images
+        self._range = start_range
+        self._area_min = area_range[0]
+        self._area_max = area_range[1]
+
+    def add_image(self, image):  # Call function each frame to update mask
+        # Generate mask
+        mask = cv2.inRange(image, self._range[0], self._range[1])
+        inv_mask = cv2.bitwise_not(mask)
+        masked_image = np.ma.array(image, dtype='uint16', mask=inv_mask)
+
+        # Check area by calculating number of masked pixels
+        mask_area = 1920 * 1080 - np.ma.count_masked(masked_image)
+        if self._area_min <= mask_area < self._area_max:
+
+            # Save mask for prediction
+            self._mask_list.append(mask)
+
+            # Save mean depth in masked area
+            self._masked_mean_depth_list.append(np.ma.mean(masked_image))
+
+            # Remove oldest mask to keep array at desired length
+            if len(self._mask_list) > self._list_length:
+                self._mask_list.pop(0)
+                self._masked_mean_depth_list.pop(0)
+
+                # Calculate new range for area and depth
+                dist_array = np.zeros(self._list_length - 1)
+                for i in range(self._list_length - 1):
+                    # Find differences between the mean distances of the saved images
+                    dist_array[i] = self._masked_mean_depth_list[i + 1] - self._masked_mean_depth_list[i]
+
+                mean_dist_change = np.mean(dist_array)
+
+                # Adjust searching range and area
+                if not np.isnan(mean_dist_change):
+                    self._range = (int(self._range[0] + mean_dist_change), int(self._range[1] + mean_dist_change))
+
+    def return_masks(self):
+        mask = np.zeros_like(self._mask_list[-1])
+        contours, _ = cv2.findContours(self._mask_list[-1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            c_x, c_y = int(x+w/2), int(y+h/2)
+            print(c_x,c_y)
+            if 1080/2 + 50 <= c_x or c_x <= 1080/2 - 50 or 1960/2 + 50 <= c_y or c_y <= 1960/2 - 50:
+                'we in'
+                cv2.drawContours(mask, [cnt], -1, 255, -1)
+
+        return mask

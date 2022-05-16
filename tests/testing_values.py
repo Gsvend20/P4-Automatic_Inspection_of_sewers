@@ -26,13 +26,13 @@ blue_values = [124, 84, 119, 37, 148, 61]
 
 scratches_values = [129, 70, 103, 21, 59, 32]
 
-#roots_values = [107, 72, 114, 28, 255, 150]
+roots_values = [200, 105, 121, 101, 152, 114]
 
 for i, tracks in enumerate(trackers):
     imf.define_trackbar(tracks, 'Base', (hls_values[i], 255))
     imf.define_trackbar(tracks, 'Cloth', (blue_values[i], 255))
     imf.define_trackbar(tracks, 'Scratches', (scratches_values[i], 255))
-    #imf.define_trackbar(tracks, 'ROE', (roots_values[i], 255))
+    imf.define_trackbar(tracks, 'ROE', (roots_values[i], 255))
 
 imf.define_trackbar('gaussian blur', 'processing', (0,1))
 # imf.define_trackbar('kernel', 'processing', (3,21))
@@ -64,7 +64,7 @@ for category in class_name:
                 blur = cv2.medianBlur(bgr_img, kernel)
 
             frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
-            frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+            frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2YCrCb)
 
 
             hls_up = []
@@ -139,7 +139,7 @@ for category in class_name:
 
             imf.resize_image(bgr_img, 'original', 0.4)
             imf.resize_image(bin.copy(), 'binary', 0.4)
-            imf.resize_image(blur, 'blur', 0.4)
+            imf.resize_image(mask4, 'blur', 0.4)
             imf.resize_image(imf.depth_to_display(depth_img), 'depth', 0.4)
             # imf.resize_image(imf.depth_to_display(canny), 'canny', 0.4)
 
