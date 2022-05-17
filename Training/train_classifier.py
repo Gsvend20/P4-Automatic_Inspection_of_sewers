@@ -4,20 +4,7 @@ from Functions.Featurespace import Classifier
 from Functions.Featurespace import FeatureSpace
 from Functions.Featurespace import find_annodir
 import numpy as np
-import os
 import glob
-
-def find_largest(contours, hierarchy):
-    largest_a = 0
-    for n in range(len(hierarchy)):
-        a = cv2.contourArea(contours[n])
-        if largest_a < a:
-            largest_a = a
-            largest_no = n
-    return contours[largest_no], hierarchy[largest_no]
-
-# TODO: FIX FS false positives
-# TODO: Get better training data
 
 """
 
@@ -27,7 +14,7 @@ eg. ./AF/Class 1/9/rgbMasks/*.png
 
 """
 
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\mikip\Documents\P4-Automatic_Inspection_of_sewers\P4-Automatic_Inspection_of_sewers\Training\training_images'
 # Definitions used for the sklearn classifier
 feature_space = []
 label_list = []
@@ -35,45 +22,24 @@ label_list = []
 # Init the classifier
 c = Classifier()
 
+# Train the classifier and save it, if you just want to test say yes to the prompt
+c.get_classifier(path)
+
 # Run test area 0 = no, 1 = yes
 TESTAREA = 1
 
-class_name, anotations = find_annodir(path)
-for category, img_folders in zip(class_name, anotations):
-    f = FeatureSpace()
-    print(f"Importing {category}")
-    for img_path in img_folders:
-        # get the name of the folder just after the category
-        class_level = img_path.split(category+'\\')[-1].split('\\')[0]
-
-        # read through all the pictures
-        img = cv2.imread(img_path, 0)
-        if img is not None and np.mean(img) > 0:
-            contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            cnt, hir = find_largest(contours, hierarchy[0])
-            if cv2.contourArea(cnt) > 0:
-                f.create_features(cnt, hir[2] != -1, f"{category}")
-
-    for feature in f.get_features():
-        feature_space.append(feature)
-        label_list.append(category)
-
-print('Training the classifier')
-c.prepare_training_data(feature_space, label_list)
-c.train_classifier()
-print('done importing')
-parent = os.path.dirname(os.getcwd())
-if not os.path.exists(parent+'/classifiers'):
-    os.makedirs(parent+'/classifiers')
-c.save_trained_classifier(parent+'/classifiers/annotated_training.pkl')
 
 """
 TESTING AREA, TOO CHECK HOW WELL IT WORKS
 """
 
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+class_name, anotations = find_annodir(path)
+
 for category in class_name:
     depth_paths = glob.glob(path.replace('\\', '/') + '/' + category + '/**/*aligned*.png', recursive=True)
-    for i in range(120,125):
+    for i in range(120,150):
+        print(f'current file {category} number {i}')
         depth_path = depth_paths[i]
         bgr_path = depth_path.replace('aligned','bgr')
 
@@ -139,10 +105,10 @@ for category in class_name:
                     # cv2.waitKey(1)
 
                     test_feature = FeatureSpace()
-                    test_feature.create_features(cnt, np.array(hrc[2] != -1), 'test')
+                    test_feature.create_features(cnt, 'test')
 
                     detected, probability = c.classify(np.asarray(test_feature.get_features()[0]))
-                    if probability > 0.60:
+                    if probability > 0.90:
                         cv2.drawContours(draw_frame, cnt, -1, (0, 255, 0), 3)
                         print(test_feature.get_features())
                         print(detected, probability)

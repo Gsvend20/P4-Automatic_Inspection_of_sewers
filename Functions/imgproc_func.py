@@ -204,11 +204,20 @@ class AdaptiveGRDepthMasker:
         mask = np.zeros_like(self._mask_list[-1])
         contours, _ = cv2.findContours(self._mask_list[-1], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         for cnt in contours:
+            # If the back-wall starts coming through, maybe look into reducing the size checked
+            #print(cv2.contourArea(cnt))
             x, y, w, h = cv2.boundingRect(cnt)
             c_x, c_y = int(x+w/2), int(y+h/2)
-            print(c_x,c_y)
-            if 1080/2 + 50 <= c_x or c_x <= 1080/2 - 50 or 1960/2 + 50 <= c_y or c_y <= 1960/2 - 50:
-                'we in'
+            if 1080/2 + 100 <= c_x or c_x <= 1080/2 - 100 or 1960/2 + 150 <= c_y or c_y <= 1960/2 - 150:
                 cv2.drawContours(mask, [cnt], -1, 255, -1)
-
         return mask
+
+
+def find_largest_contour(contours, hierarchy):
+    largest_a = 0
+    for n in range(len(hierarchy)):
+        a = cv2.contourArea(contours[n])
+        if largest_a < a:
+            largest_a = a
+            largest_no = n
+    return contours[largest_no], hierarchy[largest_no]

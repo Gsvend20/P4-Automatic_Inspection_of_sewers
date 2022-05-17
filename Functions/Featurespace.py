@@ -17,6 +17,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from Functions import imgproc_func as imf
 
 
 class FeatureSpace:
@@ -26,20 +27,16 @@ class FeatureSpace:
         self.centerX = []
         self.centerY = []
         self.convex_ratio_perimeter = []
-        self.hierachy_Bool = []
         self.compactness = []
         self.elongation = []
-        self.ferets_angle = []
         self.ferets = []
         self.thinness = []
 
-    def create_features(self, cnt, hrc, error_type):
+    def create_features(self, cnt, error_type):
         # saving type of data
         self.type.append(error_type)
         area = cv2.contourArea(cnt)
         self.area.append(area/(1960*1080*0.2))
-        # Check for holes
-        self.hierachy_Bool.append(hrc)
 
         # Center of mass
         M = cv2.moments(cnt)
@@ -61,7 +58,7 @@ class FeatureSpace:
         self.elongation.append(min(width_elon, height_elon) / max(width_elon, height_elon))
 
         # Longest internal line and its angle
-        self.ferets_angle.append((angle+180)/360) # angle is -180/180 degress, so we make it all positive and normalise
+        #self.ferets_angle.append((angle+180)/360) # angle is -180/180 degress, so we make it all positive and normalise
 
         # TODO: check if 800 fits the ferets found
         self.ferets.append(max(width_elon, height_elon)/800) # divide by 800 to normalise
@@ -78,7 +75,6 @@ class FeatureSpace:
                              self.area[i],
                              self.compactness[i],
                              self.elongation[i],
-                             # self.ferets_angle[i],
                              self.ferets[i],
                              self.thinness[i]
                              ])
@@ -161,9 +157,54 @@ class Classifier:
             pickle.dump(self._classifier, file)
 
     # Load trained classifier from dump file for use in this program
-    def load_trained_classifier(self, file_path):
+    def _load_trained_classifier(self, file_path):
         with open(file_path, 'rb') as file:
             self._classifier = pickle.load(file)
+
+    # Find a classifier or train a new if needed
+    def get_classifier(self, training_path):
+
+        # Definitions used for the sklearn classifier
+        feature_space = []
+        label_list = []
+
+        # Find the folders in path
+        class_name, _ = find_annodir(training_path)
+        # Find the parent directory
+        parent = os.path.dirname(os.getcwd())
+        # If the trained classifier does not exist recreate it
+        if os.path.exists(parent + '/classifiers/annotated_training.pkl') and input(
+                'Trained data exists\nUse it? y/n?') == 'y':
+            # Load the trained classifier
+            self._load_trained_classifier(parent + '/classifiers/annotated_training.pkl')
+        else:
+            # Train a new classifier
+            for category in class_name:
+                f = FeatureSpace()
+                img_folders = glob.glob(training_path.replace('\\', '/') + '/' + category + '/**/*mask*.png', recursive=True)
+                print(f"Importing {category}")
+                for img_path in img_folders:
+                    # get the name of the folder just after the category
+                    #class_level = img_path.split(category + '\\')[-1].split('\\')[0]
+
+                    # read through all the pictures
+                    img = cv2.imread(img_path, 0)
+                    if img is not None and np.mean(img) > 0:
+                        contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                        cnt, hir = imf.find_largest_contour(contours, hierarchy[0])
+                        if cv2.contourArea(cnt) > 0:
+                            f.create_features(cnt, f"{category}")
+
+                for feature in f.get_features():
+                    feature_space.append(feature)
+                    label_list.append(category)
+
+            print('Training the classifier')
+            self.prepare_training_data(feature_space, label_list)
+            self.train_classifier()
+            print('done importing')
+            print('saving the classifier')
+            self.save_trained_classifier(parent + '/classifiers/annotated_training.pkl')
 
     # Generate and print a list of the most suitable classifiers for selected classification
     def best_classifiers(self):
@@ -191,6 +232,7 @@ class Classifier:
         detected = self._classifier.predict(test_data)[0]
         certainty = np.max(self._classifier.predict_proba(test_data))
         return detected, certainty
+
 
 
 # Old function
@@ -371,3 +413,5 @@ def find_annodir(path):
 # clf.test_classifier()
 # detected_class, detection_certainty = clf.classify(clf._test_features[0])
 # print(f"Detected {detected_class} with a certainty of {detection_certainty}")
+
+

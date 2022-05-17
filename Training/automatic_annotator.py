@@ -2,77 +2,30 @@ import cv2
 from Functions import imgproc_func as imf
 from Functions.Featurespace import Classifier
 from Functions.Featurespace import FeatureSpace
-from Functions.Featurespace import find_annodir
 import numpy as np
 import os
 import glob
-
-def find_largest(contours, hierarchy):
-    largest_a = 0
-    for n in range(len(hierarchy)):
-        a = cv2.contourArea(contours[n])
-        if largest_a < a:
-            largest_a = a
-            largest_no = n
-    return contours[largest_no], hierarchy[largest_no]
-
-
-
-
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
-# Definitions used for the sklearn classifier
-feature_space = []
-label_list = []
-
-class_name, anotations = find_annodir(path)
-
-# Init the classifier
-c = Classifier()
-
-# Find the parent directory
-parent = os.path.dirname(os.getcwd())
-# If the trained classifier does not exist recreate it
-if os.path.exists(parent+'/classifiers/annotated_training.pkl') and input('Trained data exists\nUse it? y/n?') == 'y':
-    # Load the trained classifier
-    c.load_trained_classifier(parent+'/classifiers/annotated_training.pkl')
-else:
-    # Train a new classifier
-    for category, img_folders in zip(class_name, anotations):
-        f = FeatureSpace()
-        print(f"Importing {category}")
-        for img_path in img_folders:
-            # get the name of the folder just after the category
-            class_level = img_path.split(category+'\\')[-1].split('\\')[0]
-
-            # read through all the pictures
-            img = cv2.imread(img_path, 0)
-            if img is not None and np.mean(img) > 0:
-                contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-                cnt, hir = find_largest(contours, hierarchy[0])
-                if cv2.contourArea(cnt) > 0:
-                    f.create_features(cnt, hir[2] != -1, f"{category}")
-
-        for feature in f.get_features():
-            feature_space.append(feature)
-            label_list.append(category)
-
-    print('Training the classifier')
-    c.prepare_training_data(feature_space, label_list)
-    c.train_classifier()
-    print('done importing')
-    print('saving the classifier')
-    c.save_trained_classifier(parent+'/classifiers/annotated_training.pkl')
-
 
 """
  This is the actual part where the BLOBS are extracted
  The path should lead to the folder containing every video with training data, folder structure should follow this:
      ./category/class/**.avi
     eg. ./AF/Class 1/horizontal/*.avi
-    
+
  Training data will be saved in the git Training folder
- MAKE SURE TO MOVE AND SAVE THE IMAGES WHEN YOU ARE DONE, THEY WILL BE OVERWRITTEN!!!! 
+ MAKE SURE TO MOVE AND SAVE THE IMAGES WHEN YOU ARE DONE, THEY WILL NOT BE OVERWRITTEN!!!! 
 """
+
+# TODO: Run through the seconds set of ROE training data
+
+# Path for the annotated training data
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+
+# Init the classifier
+c = Classifier()
+# Load the trained data
+c.get_classifier(path)
+
 
 # Path leading to the training videos
 path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\Videos'
@@ -89,7 +42,7 @@ for category in category_names:
         if D:
             break
 
-        class_level = depth_path.split('Class')[1][1]
+        class_level = depth_path.split('Class')[1][1]  # Find the classes in the folder
 
         depth_src = cv2.VideoCapture(depth_path)
         bgr_src = cv2.VideoCapture(depth_path.replace('aligned', 'bgr'))
@@ -106,60 +59,62 @@ for category in category_names:
             break
         frame_depth = imf.convert_to_16(frame_depth_8bit)
 
-
+        # Run through the video and wait for input
         while True:
             if not P:
                 ret, frame_bgr = bgr_src.read()
-                if not ret:
+                if not ret:  # Break if there are no frames left
                     break
                 ret, frame_depth_8bit = depth_src.read()
                 if not ret:
                     break
-                frame_depth = imf.convert_to_16(frame_depth_8bit)
+                frame_depth = imf.convert_to_16(frame_depth_8bit)  # Convert the depth data back into readable data
 
+            # Begin treating the image in the same way you would detect flaws
             blur = cv2.medianBlur(frame_bgr, 13)
 
             frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
             frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
-            #imf.resize_image(imf.depth_to_display(frame_depth), 'aligned depth image', 0.5)
             imf.resize_image(frame_bgr, 'color image', 0.3)
 
 
             # Adaptive thresholding
-            # Generate area of interest from pipe depth data
+            # Generate area of interest from pipe depth data, by finding the end of the pipe
             aoi_end = cv2.inRange(frame_depth, int(np.max(frame_depth) - 100), int(np.max(frame_depth)))
+            # Then the front of the pipe is extracted
             aoi_pipe = cv2.inRange(frame_depth, 600, int(np.max(frame_depth) - 100))
             cnt, hir = cv2.findContours(aoi_pipe, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Make a mask out of both
             pipe_mask = np.zeros_like(frame_depth).astype('uint8')
             pipe_mask = cv2.fillPoly(pipe_mask, cnt, 255)
             bg_mask = cv2.subtract(pipe_mask, aoi_end)
-            #bg_mask = imf.open_img(bg_mask, 21, 21)
             bg_mask = cv2.dilate(bg_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (41, 41)))
-            hsi_aoi = cv2.bitwise_and(frame_hsi, frame_hsi, mask=bg_mask)
-
-            # adaptive depth
+            # use the mask to generate an area of interest in the depth data
             fg_d_frame = cv2.bitwise_and(frame_depth, frame_depth, mask=bg_mask)
+            # start the adaptive thresholding
             depth_masker.add_image(fg_d_frame)
 
             # Wait for input
             key = cv2.waitKey(1)
-            if key == ord('p'):
+            if key == ord('p'):  # Pause key
                 if P == 1:
                     P = 0
                 else:
                     P = 1
-            if key == ord('q'):
+            if key == ord('q'):  # Stop key
                 break
-            elif key == ord('d'):
+            elif key == ord('d'):  # Skip class key
                 D = 1
                 break
 
-            elif key == ord('s'):
+            elif key == ord('s'):  # Save key
+                #  Start creating the BLOBS and classify them
                 draw_frame = np.zeros_like(frame_bgr)
 
-                depth_mask = depth_masker.return_masks()
+                depth_mask = depth_masker.return_masks() # Make the adaptive thresholder return BLOBS of interest
 
+                # These are all the upper and lower bounds for the thresholding
                 hls_uppervalues = [255, 255, 255]
                 hls_lowervalues = [70, 37, 30]
 
@@ -181,62 +136,62 @@ for category in category_names:
                 mask4 = cv2.inRange(frame_hsv, np.asarray(roe_lowervalues),
                                     np.asarray(roe_uppervalues))  # Add in some dark blue for roots
 
-                canny = cv2.Canny(frame_hsi[:, :, 1], 50, 255)
-                canny = cv2.dilate(canny, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
-
-
                 hsi_thresh = cv2.add(mask1, mask4)
-                hsi_thresh = cv2.add(hsi_thresh, canny)
                 hsi_thresh = cv2.add(hsi_thresh, depth_mask)
                 hsi_thresh = cv2.subtract(hsi_thresh, mask2)
                 hsi_thresh = cv2.subtract(hsi_thresh, mask3)
 
-                bin = imf.open_img(hsi_thresh, 5, 5)
+                bin = imf.open_img(hsi_thresh, 5, 5)  # By opening we remove noise and the edges that are of no interest
 
+                # Find the contours
                 contours, hierarchy = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-                best_fit = []
+                best_fit = []  # array for saving the BLOBS according to their probability
                 if hierarchy is not None:
-                    hierarchy = hierarchy[0]  # [[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]
+                    hierarchy = hierarchy[0]  # Unpacking the hierarchy
+                    # Go through every contour and save them with their probability
                     for cnt, hrc in zip(contours, hierarchy):
-                        if cv2.contourArea(cnt) >= 50:
+                        if cv2.contourArea(cnt) >= 50:  # Ignore contours that are too small to care for
                             test_feature = FeatureSpace()
                             test_feature.create_features(cnt, np.array(hrc[2] != -1), 'test')
 
                             detected, probability = c.classify(np.asarray(test_feature.get_features()[0]))
                             best_fit.append([detected, probability, cnt])
-                    best_fit.sort(key=lambda x: x[1])
+                    best_fit.sort(key=lambda x: x[1]) # Sort the found BLOBS accordingly
+                if len(best_fit) > 1:  # just in case nothing is in the picture
+                    print(f'results {best_fit[-1][0]}, with a {best_fit[-1][1]} chance')
 
-                print(f'results {best_fit[-1][0]}, with a {best_fit[-1][1]} chance')
+                    print(f'Is this correct?, yes = s, no = d, skip = q')
+                    num = 1
+                    # Wait for user input
+                    while True:
+                        draw_frame = frame_bgr.copy()
+                        cv2.drawContours(draw_frame, [best_fit[-num][2]], 0, (0, 0, 255), 2)
+                        imf.resize_image(draw_frame, 'results', 0.3)
+                        imf.resize_image(bin, 'binary', 0.3)
+                        key = cv2.waitKey(0)
+                        if key == ord('s'):  # Save the found contour key
+                            file_id = 1
+                            # Count the existing images and get a new file id
+                            while os.path.exists(f'./training_images/{category}/Class {class_level}/{file_id}_{category}_{class_level}_mask.png'):
+                                file_id += 1
+                            save_img = np.zeros_like(bin)  # save frame
+                            # Draw the BLOB into the save frame
+                            cv2.drawContours(save_img, [best_fit[-num][2]], 0, 255, -1)
 
-
-                print(f'Is this correct?, yes = s, no = d, skip = q')
-                num = 1
-                while True:
-                    draw_frame = frame_bgr.copy()
-                    cv2.drawContours(draw_frame, [best_fit[-num][2]], 0, (0, 0, 255), 2)
-                    imf.resize_image(draw_frame, 'results', 0.3)
-                    imf.resize_image(bin, 'binary', 0.3)
-                    key = cv2.waitKey(0)
-                    if key == ord('s'):
-                        file_id = 1
-                        while os.path.exists(f'./training_images/{category}/Class {class_level}/{file_id}_{category}_{class_level}_mask.png'):
-                            file_id += 1
-                        save_img = np.zeros_like(bin)
-                        cv2.drawContours(save_img, [best_fit[-num][2]], 0, 255, -1)
-                        save_path = f'/training_images/{category}/Class {class_level}'
-                        if not os.path.exists(os.getcwd() + save_path):
-                            os.makedirs(os.getcwd() + save_path)
-                        print(f'.{save_path}/{file_id}_{category}_{class_level}_mask.png')
-                        cv2.imwrite(f'.{save_path}/{file_id}_{category}_{class_level}_mask.png', save_img)
-                        imf.save_depth_img(f'.{save_path}/{file_id}_{category}_{class_level}_aligned.png', frame_depth)
-                        cv2.imwrite(f'.{save_path}/{file_id}_{category}_{class_level}_bgr.png', frame_bgr)
-                        print('saved')
-                        imf.resize_image(np.zeros_like(frame_depth), 'results', 0.3)
-                        break
-                    elif key == ord('d'):
-                        num += 1
-                    elif key == ord('q'):
-                        print('skipped')
-                        imf.resize_image(np.zeros_like(frame_depth), 'results', 0.3)
-                        break
-
+                            # Save everything into the training images folder
+                            save_path = f'/training_images/{category}/Class {class_level}'
+                            if not os.path.exists(os.getcwd() + save_path):
+                                os.makedirs(os.getcwd() + save_path)
+                            print(f'.{save_path}/{file_id}_{category}_{class_level}_mask.png')
+                            cv2.imwrite(f'.{save_path}/{file_id}_{category}_{class_level}_mask.png', save_img)
+                            imf.save_depth_img(f'.{save_path}/{file_id}_{category}_{class_level}_aligned.png', frame_depth)
+                            cv2.imwrite(f'.{save_path}/{file_id}_{category}_{class_level}_bgr.png', frame_bgr)
+                            print('saved')
+                            imf.resize_image(np.zeros_like(frame_depth), 'results', 0.3)
+                            break
+                        elif key == ord('d'):  # Go to next contour key
+                            num += 1
+                        elif key == ord('q'):   # skip key
+                            print('skipped')
+                            imf.resize_image(np.zeros_like(frame_depth), 'results', 0.3)
+                            break
