@@ -25,13 +25,15 @@ def BLOB(input_image, Connectivity):
         Connectivity = 4
     output_Image = np.zeros_like(input_image)
     Blob_ID = 1
+    Positions = []
 
     for y, row in enumerate(input_image):
         for x, pixel in enumerate(row):
             if input_image[y, x] == 255 and output_Image[y, x] == 0:
                 output_Image = np.add(output_Image, GrassFire(input_image, y, x, Blob_ID, Connectivity))
+                Positions.append([Blob_ID, y, x])
                 Blob_ID += 1
-    return output_Image
+    return output_Image, Positions
 
 
 def GrassFire(input_image, y, x, Blob_ID, Connectivity):
@@ -61,14 +63,16 @@ FullProgTotalTime = 0
 SetupTotalTime = 0
 FileType = 'png'
 FileTypeNumb = 255
+BLOBPositions = []
 Path = ''
 # Printing images!
-while Runnings <= 999:
+while Runnings <= 990:
     print(f'StartRunning filetype : {Runnings} images so far!')
     for i in range(1, FileTypeNumb):
-        if os.exists(f'{Path}00_bgr_AF_{i}.png'):
+        #if os.exists(f'{Path}00_bgr_AF_{i}.png'):
+        if os.exists(f'{Path}TestImg ({i}).png'):
             print(f'Loop... image nr. {i}, ({Runnings})')
-            inputimg = cv2.imread(f'{Path}00_bgr_AF_{i}.png', cv2.COLOR_BGR2HSV)
+            inputimg = cv2.imread(f'{Path}TestImg ({i}).png', cv2.COLOR_BGR2HSV)
             StartProgTime = time.time()
             StartSetupTime = time.time()
             blur = cv2.medianBlur(inputimg, 13)
@@ -111,7 +115,7 @@ while Runnings <= 999:
 
             # Time the grassfire function
             StartTime = time.time()
-            Grassimg = BLOB(hsi_thresh, 4).astype('uint8')
+            Grassimg, BLOBPositionsnew = BLOB(hsi_thresh, 4)#.astype('uint8')
             EndTime = time.time()
             GrassTotalTime += (EndTime - StartTime)
 
@@ -127,12 +131,14 @@ while Runnings <= 999:
                 # print(time.time() - StartTime)
                 if (EndTime-StartTime) <= 0.000000005:
                     Runnings -= 1
+                    print('to fast! removes 1')
             # print(f'FindCountimg took = {(EndTime - StartTime) / 60} Seconds!')
             EndProgTime = time.time()
             FullProgTotalTime += (EndProgTime - StartProgTime)
             SetupTotalTime += (EndSetupTime - StartSetupTime)
             # print(f'GrassFire took = {(EndTime - StartTime) / 60} Seconds! (img:{Runnings})')
             Grassimg2 = (Grassimg * (250 / Grassimg.max())).astype('uint8')
+            BLOBPositions.append(BLOBPositionsnew)
             PrintPic('Input Image', inputimg)
             PrintPic('Thresholded Image', hsi_thresh)
             PrintPic('GrassFire', Grassimg2)
@@ -141,7 +147,7 @@ while Runnings <= 999:
                 cv2.drawContours(outPic, [cnt], 0, int(m*((200 / Grassimg.max())+50)), thickness=-1)
             PrintPic('Countour Image', outPic)
             cv2.waitKey(1)
-            if Runnings <= 50:
+            if Runnings <= 25:
                 time.sleep(0.25)
 
         else:
@@ -152,3 +158,6 @@ while Runnings <= 999:
 print(f'Average Time for GrassFire ({Runnings} runs) = {GrassTotalTime/Runnings*1000} ms')
 print(f'Average Time for FindCounturs ({Runnings} runs) = {FindCountTotalTime/Runnings*1000} ms')
 print(f'Average Time for FullProg ({Runnings} runs) = {FullProgTotalTime/Runnings*1000} ms')
+print('Output of some of the positions of some of the Images:')
+for i in range(math.floor(len(BLOBPositions)/100)):
+    print(BLOBPositions[20*i])
