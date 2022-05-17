@@ -162,16 +162,33 @@ class Classifier:
             self._classifier = pickle.load(file)
 
     # Find a classifier or train a new if needed
-    def get_classifier(self, training_path):
+    def get_classifier(self, training_path=None):
+        cur_dir = os.getcwd()   # get current directive
+        # Find the base directive
 
-        # Definitions used for the sklearn classifier
-        feature_space = []
+        if cur_dir.split('\\')[-1] == 'P4-Automatic_Inspection_of_sewers':
+            parent = cur_dir
+        else:
+            # Use the parent directory
+            parent = os.path.dirname(os.getcwd())
+
+        # Load in the training data if no path is specified
+        if os.path.exists(parent + '/classifiers/annotated_training.pkl') and training_path is None:
+            print('Successfully loaded training data')
+            self._load_trained_classifier(parent + '/classifiers/annotated_training.pkl')
+            return
+        elif training_path is None:
+            print(f'You have no trained classifier, put it in folder {parent}/classifiers/annotated_training.pkl and try again')
+            exit(1)
+
+        # If a path was specified treat it as wanting to train new data
+
+        feature_space = []  # Definitions used for the sklearn classifier
         label_list = []
 
         # Find the folders in path
         class_name, _ = find_annodir(training_path)
-        # Find the parent directory
-        parent = os.path.dirname(os.getcwd())
+
         # If the trained classifier does not exist recreate it
         if os.path.exists(parent + '/classifiers/annotated_training.pkl') and input(
                 'Trained data exists\nUse it? y/n?') == 'y':
@@ -184,9 +201,6 @@ class Classifier:
                 img_folders = glob.glob(training_path.replace('\\', '/') + '/' + category + '/**/*mask*.png', recursive=True)
                 print(f"Importing {category}")
                 for img_path in img_folders:
-                    # get the name of the folder just after the category
-                    #class_level = img_path.split(category + '\\')[-1].split('\\')[0]
-
                     # read through all the pictures
                     img = cv2.imread(img_path, 0)
                     if img is not None and np.mean(img) > 0:
