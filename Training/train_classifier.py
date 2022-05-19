@@ -26,8 +26,10 @@ c = Classifier()
 c.get_classifier(path)
 
 # Run test area 0 = no, 1 = yes
-TESTAREA = 1
+TESTAREA = 0
 
+if not TESTAREA:
+    exit()
 
 """
 TESTING AREA, TOO CHECK HOW WELL IT WORKS
@@ -47,7 +49,7 @@ for category in class_name:
         bgr_img = cv2.imread(bgr_path)
         draw_frame = np.zeros_like(bgr_img)
 
-        blur = cv2.medianBlur(bgr_img, 13)
+        blur = cv2.GaussianBlur(bgr_img, (13, 13), cv2.BORDER_DEFAULT)
 
         frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
         frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
@@ -88,15 +90,15 @@ for category in class_name:
         hsi_thresh = cv2.subtract(hsi_thresh, mask2)
         hsi_thresh = cv2.subtract(hsi_thresh, mask3)
 
-        bin = imf.open_img(hsi_thresh, 5, 5)
+        binary = imf.open_img(hsi_thresh, 5, 5)
 
-        contours, hierarchy = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if hierarchy is not None:
             hierarchy = hierarchy[0]  # [[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]
             draw_frame = bgr_img.copy()
             for cnt, hrc in zip(contours, hierarchy):
                 if cv2.contourArea(cnt) >= 50:
-                    mask = np.zeros(bin.shape, np.uint8)
+                    mask = np.zeros(binary.shape, np.uint8)
                     cv2.drawContours(mask, [cnt], 0, 255, -1)
                     mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
                     rgbd_aoi = cv2.bitwise_and(depth_img, depth_img, mask=mask)
@@ -113,7 +115,7 @@ for category in class_name:
                         print(test_feature.get_features())
                         print(detected, probability)
 
-        imf.resize_image(bin, 'binary', 0.4)
+        imf.resize_image(binary, 'binary', 0.4)
         imf.resize_image(blur, 'blur frame', 0.4)
         imf.resize_image(draw_frame, 'results', 0.4)
         cv2.waitKey(0)

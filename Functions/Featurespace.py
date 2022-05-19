@@ -36,12 +36,12 @@ class FeatureSpace:
         # saving type of data
         self.type.append(error_type)
         area = cv2.contourArea(cnt)
-        self.area.append(area/(1960*1080*0.2))
+        self.area.append(area/(1920*1080*0.2))
 
         # Center of mass
         M = cv2.moments(cnt)
         self.centerX.append(int(M['m10'] / M['m00'])/1080*3)    # Division is to normalise according to the image
-        self.centerY.append(int(M['m01'] / M['m00'])/1960*3)
+        self.centerY.append(int(M['m01'] / M['m00'])/1920*3)
 
         # Detect jaggedness of edges
         perimeter = cv2.arcLength(cnt, True)
@@ -429,3 +429,22 @@ def find_annodir(path):
 # print(f"Detected {detected_class} with a certainty of {detection_certainty}")
 
 
+def find_height(depth_img, depth, centerY):
+    p_ratio = 2.9/ 1000  # mm
+    focal_length = 3.6  # mm
+
+    camera_height = 265  # mm
+    b = 1 / (1 / focal_length - 1 / depth)
+    height = (camera_height * b / depth)
+    pixel_height = height / p_ratio  # pixel height to the bottom of the pipe
+    max_pos = int(1920/2) + int(pixel_height)
+
+    min_pos = centerY
+    point = depth_img[centerY, int(1080/2)]
+    while point != 0:
+        point = depth_img[min_pos, int(1080/2)]
+        min_pos -= 1
+    pixel_height = max_pos-min_pos
+    height = pixel_height*p_ratio
+
+    return height*depth/b

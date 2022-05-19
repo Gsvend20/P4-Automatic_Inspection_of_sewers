@@ -68,7 +68,9 @@ def blur_values(input_img, blurType):
         return cv2.blur(input_img, (kern, kern), cv2.BORDER_DEFAULT)
 
 
-def open_img(input_img, kernelErode, kernelDila):
+def open_img(input_img, kernelErode, kernelDila=None):
+    if kernelDila is None:
+        kernelDila = kernelErode
     # out_img = np.zeros(input_img)
     kernelErode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelErode, kernelErode))
     kernelDila = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelDila, kernelDila))
@@ -76,7 +78,9 @@ def open_img(input_img, kernelErode, kernelDila):
     return cv2.dilate(Erodeimg, kernelDila)
 
 
-def close_img(input_img, kernelErode, kernelDila):
+def close_img(input_img, kernelErode, kernelDila=None):
+    if kernelDila is None:
+        kernelDila = kernelErode
     # out_img = np.zeros(input_img)
     kernelErode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelErode, kernelErode))
     kernelDila = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernelDila, kernelDila))
@@ -208,7 +212,7 @@ class AdaptiveGRDepthMasker:
             #print(cv2.contourArea(cnt))
             x, y, w, h = cv2.boundingRect(cnt)
             c_x, c_y = int(x+w/2), int(y+h/2)
-            if 1080/2 + 100 <= c_x or c_x <= 1080/2 - 100 or 1960/2 + 150 <= c_y or c_y <= 1960/2 - 150:
+            if 1080/2 + 100 <= c_x or c_x <= 1080/2 - 100 or 1920/2 + 150 <= c_y or c_y <= 1920/2 - 150:
                 cv2.drawContours(mask, [cnt], -1, 255, -1)
         return mask
 

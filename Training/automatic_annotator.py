@@ -16,8 +16,6 @@ import glob
  MAKE SURE TO MOVE AND SAVE THE IMAGES WHEN YOU ARE DONE, THEY WILL NOT BE OVERWRITTEN!!!! 
 """
 
-# TODO: Run through the seconds set of ROE training data
-
 # Path for the annotated training data
 path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 
@@ -28,7 +26,7 @@ c.get_classifier(path)
 
 
 # Path leading to the training videos
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\Videos'
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Test data'
 category_names = os.listdir(path)
 
 P = 1  # Pause input
@@ -36,6 +34,7 @@ print("Press 'P' to start/pause, 'S' to save, 'Q' for next image")
 
 for category in category_names:
     D = 0
+    print(f'{path}/{category}/**/*aligned*.avi')
     listof_depth = glob.glob(f'{path}/{category}/**/*aligned*.avi', recursive=True)
     for depth_path in listof_depth:
 
@@ -43,7 +42,7 @@ for category in category_names:
             break
 
         class_level = depth_path.split('Class')[1][1]  # Find the classes in the folder
-
+        print(f'{depth_path}\n current class {class_level}')
         depth_src = cv2.VideoCapture(depth_path)
         bgr_src = cv2.VideoCapture(depth_path.replace('aligned', 'bgr'))
 
@@ -71,7 +70,7 @@ for category in category_names:
                 frame_depth = imf.convert_to_16(frame_depth_8bit)  # Convert the depth data back into readable data
 
             # Begin treating the image in the same way you would detect flaws
-            blur = cv2.medianBlur(frame_bgr, 13)
+            blur = cv2.GaussianBlur(frame_bgr, (13, 13), cv2.BORDER_DEFAULT)
 
             frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
             frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
@@ -112,32 +111,26 @@ for category in category_names:
                 #  Start creating the BLOBS and classify them
                 draw_frame = np.zeros_like(frame_bgr)
 
-                depth_mask = depth_masker.return_masks() # Make the adaptive thresholder return BLOBS of interest
+                depth_mask = depth_masker.return_masks()  # Make the adaptive thresholder return BLOBS of interest
 
                 # These are all the upper and lower bounds for the thresholding
-                hls_uppervalues = [255, 255, 255]
-                hls_lowervalues = [70, 37, 30]
+                base_up = [255, 255, 255]
+                base_low = [70, 37, 30]
 
-                blue_uppervalues = [124, 119, 148]
-                blue_lowervalues = [84, 37, 61]
+                blue_up = [124, 140, 150]
+                blue_low = [84, 37, 61]
 
-                scr_uppervalues = [129, 103, 59]
-                scr_lowervalues = [70, 21, 32]
+                scr_up = [129, 103, 59]
+                scr_low = [70, 21, 32]
 
-                roe_uppervalues = [107, 114, 255]
-                roe_lowervalues = [72, 28, 150]
+                mask1 = cv2.inRange(frame_hsi, np.asarray(base_low),
+                                    np.asarray(base_up))  # Threshold around highlights
+                mask2 = cv2.inRange(frame_hsi, np.asarray(blue_low),
+                                    np.asarray(blue_up))  # Remove blue, due to the piece of cloth
+                mask3 = cv2.inRange(frame_hsi, np.asarray(scr_low),
+                                    np.asarray(scr_up))  # Remove blue, due to scratches
 
-                mask1 = cv2.inRange(frame_hsi, np.asarray(hls_lowervalues),
-                                    np.asarray(hls_uppervalues))  # Threshold around highlights
-                mask2 = cv2.inRange(frame_hsi, np.asarray(blue_lowervalues),
-                                    np.asarray(blue_uppervalues))  # Remove blue, due to the piece of cloth
-                mask3 = cv2.inRange(frame_hsi, np.asarray(scr_lowervalues),
-                                    np.asarray(scr_uppervalues))  # Remove blue, due to scratches
-                mask4 = cv2.inRange(frame_hsv, np.asarray(roe_lowervalues),
-                                    np.asarray(roe_uppervalues))  # Add in some dark blue for roots
-
-                hsi_thresh = cv2.add(mask1, mask4)
-                hsi_thresh = cv2.add(hsi_thresh, depth_mask)
+                hsi_thresh = cv2.add(mask1, depth_mask)
                 hsi_thresh = cv2.subtract(hsi_thresh, mask2)
                 hsi_thresh = cv2.subtract(hsi_thresh, mask3)
 
@@ -152,7 +145,7 @@ for category in category_names:
                     for cnt, hrc in zip(contours, hierarchy):
                         if cv2.contourArea(cnt) >= 50:  # Ignore contours that are too small to care for
                             test_feature = FeatureSpace()
-                            test_feature.create_features(cnt, np.array(hrc[2] != -1), 'test')
+                            test_feature.create_features(cnt, 'test')
 
                             detected, probability = c.classify(np.asarray(test_feature.get_features()[0]))
                             best_fit.append([detected, probability, cnt])
