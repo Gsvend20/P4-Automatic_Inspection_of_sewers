@@ -23,7 +23,7 @@ from Functions import imgproc_func as imf
 class FeatureSpace:
     def __init__(self):
         self.type = []
-        self.area = []
+        self.depth = []
         self.centerX = []
         self.centerY = []
         self.convex_ratio_perimeter = []
@@ -32,12 +32,12 @@ class FeatureSpace:
         self.ferets = []
         self.thinness = []
 
-    def create_features(self, cnt, error_type):
+    def create_features(self, cnt, avg_depth, error_type):
         # saving type of data
         self.type.append(error_type)
         area = cv2.contourArea(cnt)
-        self.area.append(area/(1920*1080*0.2))
 
+        self.depth.append(avg_depth/1000)  # Division by 1000 due to the that being around max length
         # Center of mass
         M = cv2.moments(cnt)
         self.centerX.append(int(M['m10'] / M['m00'])/1080*3)    # Division is to normalise according to the image
@@ -64,7 +64,7 @@ class FeatureSpace:
         self.ferets.append(max(width_elon, height_elon)/800) # divide by 800 to normalise
 
         # Thinness TODO: Check normalisation
-        self.thinness.append(perimeter / area * 6) # Multiply by 6 to bring the thinness average closer to one
+        self.thinness.append(perimeter / area * 6)  # Multiply by 6 to bring the thinness average closer to one
 
     def get_features(self):
         features = []
@@ -72,12 +72,13 @@ class FeatureSpace:
             features.append([self.centerX[i],
                              self.centerY[i],
                              self.convex_ratio_perimeter[i],
-                             self.area[i],
+                             self.depth[i],
                              self.compactness[i],
                              self.elongation[i],
                              self.ferets[i],
                              self.thinness[i]
                              ])
+        #print(np.max(features), 'in', np.where(features == np.max(features)))
         return features
 
 
@@ -203,11 +204,15 @@ class Classifier:
                 for img_path in img_folders:
                     # read through all the pictures
                     img = cv2.imread(img_path, 0)
-                    if img is not None and np.mean(img) > 0:
+                    depth = cv2.imread(img_path.replace('mask','aligned'), -1)
+                    depth = imf.convert_to_16(depth)
+
+                    if img is not None and np.mean(img) > 0:    # Incase the mask is empty
                         contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
                         cnt, hir = imf.find_largest_contour(contours, hierarchy[0])
                         if cv2.contourArea(cnt) > 0:
-                            f.create_features(cnt, f"{category}")
+                            avg_depth = imf.average_contour_depth(depth, cnt)
+                            f.create_features(cnt, avg_depth, f"{category}")
 
                 for feature in f.get_features():
                     feature_space.append(feature)

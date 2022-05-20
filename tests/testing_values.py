@@ -10,7 +10,7 @@ import glob
 SÆT DIN PATH TIL DIT ONE DRIVE HER -> DOWNLOAD ANNOTATIONS MAPPEN FØRST
 """
 # Path to folder containing the different classes
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 
 
 
@@ -142,7 +142,7 @@ for category in class_name:
             imf.resize_image(mask4, 'blur', 0.4)
             imf.resize_image(imf.depth_to_display(depth_img), 'depth', 0.4)
             # imf.resize_image(imf.depth_to_display(canny), 'canny', 0.4)
-
+            cv2.imwrite('result.png', bin)
             key = cv2.waitKey(1)
             if key == ord('q'):
                 break

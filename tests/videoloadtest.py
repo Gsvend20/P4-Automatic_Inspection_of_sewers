@@ -1,5 +1,5 @@
 import cv2
-import load_saved_videos
+from tests import load_saved_videos
 
 path = 'sewer recordings/2'
 

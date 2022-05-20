@@ -14,7 +14,7 @@ eg. ./AF/Class 1/9/rgbMasks/*.png
 
 """
 
-path = r'C:\Users\mikip\Documents\P4-Automatic_Inspection_of_sewers\P4-Automatic_Inspection_of_sewers\Training\training_images'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\training_images'
 # Definitions used for the sklearn classifier
 feature_space = []
 label_list = []
@@ -26,7 +26,7 @@ c = Classifier()
 c.get_classifier(path)
 
 # Run test area 0 = no, 1 = yes
-TESTAREA = 0
+TESTAREA = 1
 
 if not TESTAREA:
     exit()
@@ -35,7 +35,7 @@ if not TESTAREA:
 TESTING AREA, TOO CHECK HOW WELL IT WORKS
 """
 
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\training_images'
 class_name, anotations = find_annodir(path)
 
 for category in class_name:
@@ -105,9 +105,9 @@ for category in class_name:
                     # mask_display = imf.depth_to_display(rgbd_aoi)
                     # imf.resize_image(mask_display, 'mask', 0.5)
                     # cv2.waitKey(1)
-
+                    avg_depth = imf.average_contour_depth(depth_img, cnt)
                     test_feature = FeatureSpace()
-                    test_feature.create_features(cnt, 'test')
+                    test_feature.create_features(cnt, avg_depth, 'test')
 
                     detected, probability = c.classify(np.asarray(test_feature.get_features()[0]))
                     if probability > 0.90:

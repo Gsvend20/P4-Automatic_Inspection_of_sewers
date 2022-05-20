@@ -225,3 +225,15 @@ def find_largest_contour(contours, hierarchy):
             largest_a = a
             largest_no = n
     return contours[largest_no], hierarchy[largest_no]
+
+
+def average_contour_depth(depth_img, cnt):
+    # Get the average depth
+    d_mask = np.zeros((1920,1080), dtype='uint8')
+    cv2.fillPoly(d_mask, cnt, 255)
+    depth_cnt = cv2.bitwise_and(depth_img, depth_img, mask=d_mask)
+    if np.max(depth_cnt) != 0:
+        mean = np.mean(np.nonzero(depth_cnt))
+    else:
+        mean = 10  # Set to close
+    return mean

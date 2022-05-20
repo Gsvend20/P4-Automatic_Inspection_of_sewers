@@ -1,5 +1,6 @@
 import cv2
 from Functions import imgproc_func as imf
+from Functions import sewer_image_process as imp
 from Functions.Featurespace import Classifier
 from Functions.Featurespace import FeatureSpace
 import numpy as np
@@ -17,7 +18,7 @@ import glob
 """
 
 # Path for the annotated training data
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 
 # Init the classifier
 c = Classifier()
@@ -26,7 +27,7 @@ c.get_classifier(path)
 
 
 # Path leading to the training videos
-path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Test data'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Test data'
 category_names = os.listdir(path)
 
 P = 1  # Pause input
@@ -69,30 +70,11 @@ for category in category_names:
                     break
                 frame_depth = imf.convert_to_16(frame_depth_8bit)  # Convert the depth data back into readable data
 
-            # Begin treating the image in the same way you would detect flaws
-            blur = cv2.GaussianBlur(frame_bgr, (13, 13), cv2.BORDER_DEFAULT)
-
-            frame_hsi = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
-            frame_hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-
             imf.resize_image(frame_bgr, 'color image', 0.3)
 
 
-            # Adaptive thresholding
-            # Generate area of interest from pipe depth data, by finding the end of the pipe
-            aoi_end = cv2.inRange(frame_depth, int(np.max(frame_depth) - 100), int(np.max(frame_depth)))
-            # Then the front of the pipe is extracted
-            aoi_pipe = cv2.inRange(frame_depth, 600, int(np.max(frame_depth) - 100))
-            cnt, hir = cv2.findContours(aoi_pipe, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # Make a mask out of both
-            pipe_mask = np.zeros_like(frame_depth).astype('uint8')
-            pipe_mask = cv2.fillPoly(pipe_mask, cnt, 255)
-            bg_mask = cv2.subtract(pipe_mask, aoi_end)
-            bg_mask = cv2.dilate(bg_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (41, 41)))
-            # use the mask to generate an area of interest in the depth data
-            fg_d_frame = cv2.bitwise_and(frame_depth, frame_depth, mask=bg_mask)
-            # start the adaptive thresholding
-            depth_masker.add_image(fg_d_frame)
+            #  Adaptive thresholding has to run with every frame
+            imp.add_adaptive_frame(frame_depth, depth_masker)
 
             # Wait for input
             key = cv2.waitKey(1)
@@ -113,31 +95,11 @@ for category in category_names:
 
                 depth_mask = depth_masker.return_masks()  # Make the adaptive thresholder return BLOBS of interest
 
-                # These are all the upper and lower bounds for the thresholding
-                base_up = [255, 255, 255]
-                base_low = [70, 37, 30]
-
-                blue_up = [124, 140, 150]
-                blue_low = [84, 37, 61]
-
-                scr_up = [129, 103, 59]
-                scr_low = [70, 21, 32]
-
-                mask1 = cv2.inRange(frame_hsi, np.asarray(base_low),
-                                    np.asarray(base_up))  # Threshold around highlights
-                mask2 = cv2.inRange(frame_hsi, np.asarray(blue_low),
-                                    np.asarray(blue_up))  # Remove blue, due to the piece of cloth
-                mask3 = cv2.inRange(frame_hsi, np.asarray(scr_low),
-                                    np.asarray(scr_up))  # Remove blue, due to scratches
-
-                hsi_thresh = cv2.add(mask1, depth_mask)
-                hsi_thresh = cv2.subtract(hsi_thresh, mask2)
-                hsi_thresh = cv2.subtract(hsi_thresh, mask3)
-
-                bin = imf.open_img(hsi_thresh, 5, 5)  # By opening we remove noise and the edges that are of no interest
+                #  Image processing
+                binary = imp.get_binary(frame_bgr, depth_mask)
 
                 # Find the contours
-                contours, hierarchy = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
                 best_fit = []  # array for saving the BLOBS according to their probability
                 if hierarchy is not None:
                     hierarchy = hierarchy[0]  # Unpacking the hierarchy
@@ -145,7 +107,8 @@ for category in category_names:
                     for cnt, hrc in zip(contours, hierarchy):
                         if cv2.contourArea(cnt) >= 50:  # Ignore contours that are too small to care for
                             test_feature = FeatureSpace()
-                            test_feature.create_features(cnt, 'test')
+                            avg_depth = imf.average_contour_depth(frame_depth, cnt)
+                            test_feature.create_features(cnt, avg_depth, 'test')
 
                             detected, probability = c.classify(np.asarray(test_feature.get_features()[0]))
                             best_fit.append([detected, probability, cnt])
@@ -160,14 +123,14 @@ for category in category_names:
                         draw_frame = frame_bgr.copy()
                         cv2.drawContours(draw_frame, [best_fit[-num][2]], 0, (0, 0, 255), 2)
                         imf.resize_image(draw_frame, 'results', 0.3)
-                        imf.resize_image(bin, 'binary', 0.3)
+                        imf.resize_image(binary, 'binary', 0.3)
                         key = cv2.waitKey(0)
                         if key == ord('s'):  # Save the found contour key
                             file_id = 1
                             # Count the existing images and get a new file id
                             while os.path.exists(f'./training_images/{category}/Class {class_level}/{file_id}_{category}_{class_level}_mask.png'):
                                 file_id += 1
-                            save_img = np.zeros_like(bin)  # save frame
+                            save_img = np.zeros_like(binary)  # save frame
                             # Draw the BLOB into the save frame
                             cv2.drawContours(save_img, [best_fit[-num][2]], 0, 255, -1)
 
