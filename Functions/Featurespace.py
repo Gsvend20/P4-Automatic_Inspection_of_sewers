@@ -7,7 +7,7 @@ import glob
 from matplotlib.colors import ListedColormap
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+#from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -69,14 +69,14 @@ class FeatureSpace:
     def get_features(self):
         features = []
         for i in range(0, np.shape(self.type)[0]):
-            features.append([self.centerX[i],
-                             self.centerY[i],
-                             self.convex_ratio_perimeter[i],
-                             self.depth[i],
-                             self.compactness[i],
-                             self.elongation[i],
-                             self.ferets[i],
-                             self.thinness[i]
+            features.append([self.centerX[i],                   # 0
+                             self.centerY[i],                   # 1
+                             self.convex_ratio_perimeter[i],    # 2
+                             self.depth[i],                     # 3
+                             self.compactness[i],               # 4
+                             self.elongation[i],                # 5
+                             self.ferets[i],                    # 6
+                             self.thinness[i]                   # 7
                              ])
         #print(np.max(features), 'in', np.where(features == np.max(features)))
         return features
@@ -181,12 +181,12 @@ class Classifier:
             parent = os.path.dirname(os.getcwd())
 
         # Load in the training data if no path is specified
-        if os.path.exists(parent + '/classifiers/segmented_training.pkl') and training_path is None:
+        if os.path.exists(parent + '/data/classifiers/segmented_training.pkl') and training_path is None:
             print('Successfully loaded training data')
-            self._load_trained_classifier(parent + '/classifiers/segmented_training.pkl')
+            self._load_trained_classifier(parent + '/data/classifiers/segmented_training.pkl')
             return
         elif training_path is None:
-            print(f'You have no trained classifier, put it in folder {parent}/classifiers/segmented_training.pkl and try again')
+            print(f'You have no trained classifier, put it in folder {parent}/data/classifiers/segmented_training.pkl and try again')
             exit(1)
 
         # If a path was specified treat it as wanting to train new data
@@ -199,10 +199,10 @@ class Classifier:
 
         classifier_name = input('what should the classifier file be called?')
         # If the trained classifier does not exist recreate it
-        if os.path.exists(parent + f'/classifiers/{classifier_name}.pkl') and input(
+        if os.path.exists(parent + f'/data/classifiers/{classifier_name}.pkl') and input(
                 'A file already exits\nOverwrite it? y/n?') != 'y':
             # Load the trained classifier
-            self._load_trained_classifier(parent + f'/classifiers/{classifier_name}.pkl')
+            self._load_trained_classifier(parent + f'/data/classifiers/{classifier_name}.pkl')
         else:
             # Train a new classifier
             for category in class_name:
@@ -231,7 +231,7 @@ class Classifier:
             self.train_classifier()
             print('done importing')
             print('saving the classifier')
-            self.save_trained_classifier(parent + '/classifiers/segmented_training.pkl')
+            self.save_trained_classifier(parent + '/data/classifiers/segmented_training.pkl')
 
     # Generate and print a list of the most suitable classifiers for selected classification
     def best_classifiers(self):
@@ -262,63 +262,34 @@ class Classifier:
 
 
 # Old function
-def plot_features(dataset):
-    # # Code needed to create the dataset for this function
-    # index_1 = np.where(np.char.find(np.array(featurelist.type), 'ROE_70') + 1)[0]
-    # index_2 = np.where(np.char.find(np.array(featurelist.type), 'ROE_150') + 1)[0]
-    # index_3 = np.where(np.char.find(np.array(featurelist.type), 'ROE_300') + 1)[0]
-    #
-    # # Create signifiers of which category each datapoint belongs to
-    # intervals = []
-    # for i in index_1:
-    #     intervals.append(0)
-    # for i in index_2:
-    #     intervals.append(1)
-    #
-    # # Create datasets
-    # datasets1 = []
-    # datasets2 = []
-    # datasets3 = []
-    # for i in index_1:
-    #     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    #     datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
-    #     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
-    # for i in index_2:
-    #     datasets1.append([featurelist.convex_ratio_perimeter[i], featurelist.compactness[i]])
-    #     datasets2.append([featurelist.elongation[i], featurelist.hierachy_Bool[i]])
-    #     datasets3.append([featurelist.ferets[i], featurelist.thinness[i]])
-    # datasets = [(np.array(datasets1), np.array(intervals)),
-    #             (np.array(datasets2), np.array(intervals)),
-    #             (np.array(datasets3), np.array(intervals))]
-    #
-    # plot_features(datasets)
-
+def plot_features(dataset, training_set):
     h = 0.02  # step size in the mesh
 
     names = [
         "Nearest Neighbors",
-        "Linear SVM",
-        "RBF SVM",
+        #"Linear SVM",
+        #"RBF SVM",
         "Gaussian Process",
         # "Decision Tree",
         # "Random Forest",
-        "Neural Net",
+        #"Neural Net",
         # "AdaBoost",
-        "Naive Bayes",
-        "QDA",
+        #"Naive Bayes",
+        #"QDA",
     ]
 
     classifiers = [
-        KNeighborsClassifier(3),
-        SVC(kernel="linear", C=0.025),
-        SVC(gamma=2, C=1),
-        GaussianProcessClassifier(1.0 * RBF(1.0)),
+        KNeighborsClassifier(10),
+        #SVC(kernel="linear", C=0.025),
+        #SVC(gamma=2, C=1),
+        GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)),
+                                  max_iter_predict=1000)
         # DecisionTreeClassifier(max_depth=5),
         # RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(alpha=1, max_iter=1000),
+        #MLPClassifier(alpha=1, max_iter=1000),
         # AdaBoostClassifier(),
-        GaussianNB(),
-        QuadraticDiscriminantAnalysis(),
+        #GaussianNB(),
+        #QuadraticDiscriminantAnalysis(),
     ]
 
     figure = plt.figure(figsize=(29, 9))
@@ -326,24 +297,26 @@ def plot_features(dataset):
     # iterate over datasets
     for ds_cnt, ds in enumerate(dataset):
         # preprocess dataset, split into training and test part
+        ts = training_set[ds_cnt]
         X, y = ds
-        X = StandardScaler().fit_transform(X)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.4, random_state=42
-        )
+
+        X_test, y_test = ds
+        X_train, y_train = ts
 
         x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
         y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
         xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
         # just plot the dataset first
-        cm = plt.cm.RdBu
-        cm_bright = ListedColormap(["#FF0000", "#0000FF"])
-        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+        cm_plist = ["#FF5C57", "#4445FF", '#4BF06B', '#F7FA81', '#F09351'][0:max(y_train) + 1]
+        cm = ListedColormap(cm_plist)
+        cm_clist = ["#FF0000", "#0000FF", '#01F025', '#FAF633', '#F06C0D'][0:max(y_test)+1]
+        cm_bright = ListedColormap(cm_clist)
+        ax = plt.subplot(len(dataset), len(classifiers) + 1, i)
         if ds_cnt == 0:
             ax.set_title("Input data")
         # Plot the training points
-        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k")
+        #ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k")
         # Plot the testing points
         ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6, edgecolors="k")
 
@@ -355,9 +328,9 @@ def plot_features(dataset):
 
         # iterate over classifiers
         for name, clf in zip(names, classifiers):
-            ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+            ax = plt.subplot(len(dataset), len(classifiers) + 1, i)
             clf.fit(X_train, y_train)
-            score = clf.score(X_test, y_test)
+            score = clf.score(X_train, y_train)
 
             # Plot the decision boundary. For that, we will assign a color to each
             # point in the mesh [x_min, x_max]x[y_min, y_max].
@@ -367,7 +340,7 @@ def plot_features(dataset):
                 Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
 
             # Put the result into a color plot
-            print(xx.shape)
+            #print(xx.shape)
             Z = Z.reshape(xx.shape)
             ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
 
@@ -392,6 +365,35 @@ def plot_features(dataset):
     plt.tight_layout()
     plt.show()
     return
+
+
+def create_dataset(feature_space, label_list, categories):
+    # Code needed to create the dataset for this function
+    index = []
+    for category in categories:
+        index.append(np.where(np.array(label_list) == category)[0])  # np.where also returns the dtype, but we don't care about that
+    # Create signifiers of which category each datapoint belongs to
+    intervals = []
+    # Create datasets
+    datasets1 = []
+    datasets2 = []
+    datasets3 = []
+    for i in range(len(categories)):
+        for _ in index[i]:
+            intervals.append(i)
+        for n in index[i]:
+            # X = 0             # Y = 1
+            # conv = 2             # depth = 3
+            # comp = 4             # elong = 5
+            # ferets = 6           # thinness = 7
+            datasets1.append([feature_space[n][6], feature_space[n][4]])
+            datasets2.append([feature_space[n][2], feature_space[n][5]])
+            datasets3.append([feature_space[n][0], feature_space[n][1]])
+
+    datasets = [(np.array(datasets1), np.array(intervals)),
+                (np.array(datasets2), np.array(intervals)),
+                (np.array(datasets3), np.array(intervals))]
+    return datasets
 
 
 def find_annodir(path):
