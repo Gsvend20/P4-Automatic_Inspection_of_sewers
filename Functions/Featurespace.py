@@ -121,6 +121,10 @@ class Classifier:
         self._training_features = training_features
         self._training_labels = training_labels
 
+    def prepare_test_data(self, test_features, test_labels):
+        self._test_features = test_features
+        self._test_labels = test_labels
+
     # Create test data by splitting training set
     def split_training_data(self, test_ratio=0.4):
         x_tra, x_tes, y_tra, y_tes = train_test_split(self._training_features,
@@ -131,6 +135,9 @@ class Classifier:
         self._training_labels = y_tra
         self._test_features = x_tes
         self._test_labels = y_tes
+
+
+
 
     # Train selected classifier
     def train_classifier(self):
@@ -174,12 +181,12 @@ class Classifier:
             parent = os.path.dirname(os.getcwd())
 
         # Load in the training data if no path is specified
-        if os.path.exists(parent + '/classifiers/annotated_training.pkl') and training_path is None:
+        if os.path.exists(parent + '/classifiers/segmented_training.pkl') and training_path is None:
             print('Successfully loaded training data')
-            self._load_trained_classifier(parent + '/classifiers/annotated_training.pkl')
+            self._load_trained_classifier(parent + '/classifiers/segmented_training.pkl')
             return
         elif training_path is None:
-            print(f'You have no trained classifier, put it in folder {parent}/classifiers/annotated_training.pkl and try again')
+            print(f'You have no trained classifier, put it in folder {parent}/classifiers/segmented_training.pkl and try again')
             exit(1)
 
         # If a path was specified treat it as wanting to train new data
@@ -190,11 +197,12 @@ class Classifier:
         # Find the folders in path
         class_name, _ = find_annodir(training_path)
 
+        classifier_name = input('what should the classifier file be called?')
         # If the trained classifier does not exist recreate it
-        if os.path.exists(parent + '/classifiers/annotated_training.pkl') and input(
-                'Trained data exists\nUse it? y/n?') == 'y':
+        if os.path.exists(parent + f'/classifiers/{classifier_name}.pkl') and input(
+                'A file already exits\nOverwrite it? y/n?') != 'y':
             # Load the trained classifier
-            self._load_trained_classifier(parent + '/classifiers/annotated_training.pkl')
+            self._load_trained_classifier(parent + f'/classifiers/{classifier_name}.pkl')
         else:
             # Train a new classifier
             for category in class_name:
@@ -223,7 +231,7 @@ class Classifier:
             self.train_classifier()
             print('done importing')
             print('saving the classifier')
-            self.save_trained_classifier(parent + '/classifiers/annotated_training.pkl')
+            self.save_trained_classifier(parent + '/classifiers/segmented_training.pkl')
 
     # Generate and print a list of the most suitable classifiers for selected classification
     def best_classifiers(self):
@@ -251,7 +259,6 @@ class Classifier:
         detected = self._classifier.predict(test_data)[0]
         certainty = np.max(self._classifier.predict_proba(test_data))
         return detected, certainty
-
 
 
 # Old function
@@ -393,45 +400,6 @@ def find_annodir(path):
     for categories in class_name:
         folder_list.append(glob.glob(path.replace('\\','/') + '/' + categories + '/**/rgbMasks/*.png', recursive=True))
     return class_name, folder_list
-#
-# featurelist = FeatureSpace()
-# type_list = find_annodir()
-#
-# # Run through all types
-# for types in type_list:
-#     print(f"Importing {types}")
-#     # Run through all subtypes
-#     for category in os.listdir(types):
-#         mask_path = os.listdir(f"{types}/{category}/rgbMasks")
-#         # Get filenames
-#         for images in mask_path:
-#             # Load image
-#             if images.endswith('.png'):
-#                 img = cv2.imread(f"{types}/{category}/rgbMasks/{images}", 0)
-#                 if img is not None and np.mean(img) > 0:
-#                     cnt, hir = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
-#                     featurelist.create_features(cnt, hir, f"{types}_{category}")
-#     if types == 'ROE':
-#         print('Done import')
-#         break
-#
-# classifier_path = 'test.pkl'
-#
-# clf = Classifier()
-# clf.prepare_training_data(featurelist.get_features(), featurelist.type)
-# clf.split_training_data()
-#
-# if os.path.exists(classifier_path):
-#     clf.load_trained_classifier(classifier_path)
-# else:
-#     clf.train_classifier()
-#     clf.save_trained_classifier(classifier_path)
-#
-# clf.best_classifiers()
-#
-# clf.test_classifier()
-# detected_class, detection_certainty = clf.classify(clf._test_features[0])
-# print(f"Detected {detected_class} with a certainty of {detection_certainty}")
 
 
 def find_height(depth_img, depth, centerY):
