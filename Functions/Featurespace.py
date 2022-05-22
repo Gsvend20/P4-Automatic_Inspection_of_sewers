@@ -266,7 +266,7 @@ def plot_features(dataset, training_set):
     h = 0.02  # step size in the mesh
 
     names = [
-        "Nearest Neighbors",
+        #"Nearest Neighbors",
         #"Linear SVM",
         #"RBF SVM",
         "Gaussian Process",
@@ -279,7 +279,7 @@ def plot_features(dataset, training_set):
     ]
 
     classifiers = [
-        KNeighborsClassifier(10),
+        #KNeighborsClassifier(10),
         #SVC(kernel="linear", C=0.025),
         #SVC(gamma=2, C=1),
         GaussianProcessClassifier(RBF(length_scale_bounds=(1.0E-5, 1.0E+100)),
@@ -386,8 +386,8 @@ def create_dataset(feature_space, label_list, categories):
             # conv = 2             # depth = 3
             # comp = 4             # elong = 5
             # ferets = 6           # thinness = 7
-            datasets1.append([feature_space[n][6], feature_space[n][4]])
-            datasets2.append([feature_space[n][2], feature_space[n][5]])
+            datasets1.append([feature_space[n][7], feature_space[n][4]])
+            datasets2.append([feature_space[n][6], feature_space[n][2]])
             datasets3.append([feature_space[n][0], feature_space[n][1]])
 
     datasets = [(np.array(datasets1), np.array(intervals)),

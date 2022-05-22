@@ -125,11 +125,8 @@ categories = ['GR', 'AF', 'ROE', 'FS']
 
 print('test set creation')
 test_set = fs.create_dataset(feature_space, label_list, categories[0:2])
-print('annotation set creation')
 ano_set = fs.create_dataset(annotated_feature, label_ano, categories[0:2])
-print('segmented set creation')
 seg_set = fs.create_dataset(segmented_feature, label_seg, categories[0:2])
-print('Combined set creation')
 comb_set = fs.create_dataset(combined_feature, label_comb, categories[0:2])
 
 
