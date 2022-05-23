@@ -18,16 +18,16 @@ import glob
 """
 
 # Path for the annotated training data
-path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
 
 # Init the classifier
 c = Classifier()
 # Load the trained data
-c.get_classifier(path)
-
+#c.get_classifier(path)
+c.get_classifier()
 
 # Path leading to the training videos
-path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Test data'
+path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Test data'
 category_names = os.listdir(path)
 
 P = 1  # Pause input
