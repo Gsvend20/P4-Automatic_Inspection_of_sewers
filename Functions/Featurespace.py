@@ -226,7 +226,7 @@ class Classifier:
                     feature_space.append(feature)
                     label_list.append(category)
 
-            print('Training the classifier')
+            print('conversion files the classifier')
             self.prepare_training_data(feature_space, label_list)
             self.train_classifier()
             print('done importing')

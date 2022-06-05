@@ -13,7 +13,7 @@ def resize_image(image, image_name, procent):
 for n in range(1,4):
     v_num = n
     path_bgr = f'{Path.cwd().parent.as_posix()}/sewer recordings/'
-    #/sewer recordings/Training data/Offset pipe/Along pipe/30mm/
+    #/sewer recordings/conversion files data/Offset pipe/Along pipe/30mm/
     vid = cv2.VideoCapture(path_bgr+f'{v_num}_bgr.avi')
     while vid.isOpened():
         # read frame

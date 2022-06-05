@@ -13,7 +13,7 @@ import glob
      ./category/class/**.avi
     eg. ./AF/Class 1/horizontal/*.avi
 
- Training data will be saved in the git Training folder
+ conversion files data will be saved in the git conversion files folder
  MAKE SURE TO MOVE AND SAVE THE IMAGES WHEN YOU ARE DONE, THEY WILL NOT BE OVERWRITTEN!!!! 
 """
 

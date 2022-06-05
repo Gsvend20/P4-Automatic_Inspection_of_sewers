@@ -43,7 +43,7 @@ for category in category_list:
             feature_space.append(feature)
             label_list.append(category)
 
-print('Training the classifier')
+print('conversion files the classifier')
 c.prepare_training_data(feature_space, label_list)
 c.train_classifier()
 print('done importing')
@@ -76,7 +76,7 @@ for category in category_list:
         feature_space.append(feature)
         label_list.append(category)
 
-print('Training the classifier')
+print('conversion files the classifier')
 c.prepare_training_data(feature_space, label_list)
 c.train_classifier()
 print('done importing')

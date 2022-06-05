@@ -91,8 +91,8 @@ def save_img(path, image):
 
 
 # Change the folder path accordingly
-#folder_path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\annotations'
-folder_path = r'C:\Users\Muku\Documents\P4-Automatic_Inspection_of_sewers\Training\assbrnstest'
+#folder_path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\conversion files data\annotations'
+folder_path = r'/conversion files\assbrnstest'
 # Set to 0 if it's pictures 1 if it's videos
 VIDEO = 1
 

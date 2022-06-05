@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from os import mkdir, listdir
 from Functions import imgproc_func as func
 
-path = f'{Path.cwd().parent.as_posix()}/sewer recordings/Histogram'
+path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Training data\Videos\ROE\2nd training set\Class 3'
 listofvids = listdir(path)
 
 for vid in listofvids:
@@ -24,7 +24,7 @@ for vid in listofvids:
         if key & 0xFF == ord('q'):
             break
         if key & 0xFF == ord('w'):
-
+            cv2.imwrite('histogram.png',frame)
             full_frame = []
             full_frame.append(frame)
             full_frame.append(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV))
