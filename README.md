@@ -18,7 +18,7 @@ This code requires:
 * scikit_learn 1.1.1
 
 ### Navigating the folders
-Main files for driving the NXT, recording with the kinect, and damage detection, is found outside of folders.
+Main files for driving the NXT, recording with the kinect, and damage detection, is found front of the folders.
 
 The \data folder contains .pkl files, such as trained classifiers and test data. (Trained classifiers are not uploaded to git due to their file size)
 
