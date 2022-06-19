@@ -179,8 +179,9 @@ class AdaptiveGRDepthMasker:
 
         # Check area by calculating number of masked pixels
         mask_area = 1920 * 1080 - np.ma.count_masked(masked_image)
+        resize_image(mask, 'mask_before', 0.4)
         if self._area_min <= mask_area < self._area_max:
-
+            resize_image(self._mask_list[-1], 'mask', 0.4)
             # Save mask for prediction
             self._mask_list.append(mask)
 
@@ -203,6 +204,8 @@ class AdaptiveGRDepthMasker:
                 # Adjust searching range and area
                 if not np.isnan(mean_dist_change):
                     self._range = (int(self._range[0] + mean_dist_change), int(self._range[1] + mean_dist_change))
+
+
 
     def return_masks(self):
         mask = np.zeros_like(self._mask_list[-1])

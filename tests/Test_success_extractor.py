@@ -36,6 +36,7 @@ for video in videos:
     feature_vector = np.array(feature_space)[index]
     feature_names = np.array(label_list)[index]
 
+    print(f'feature vec: {feature_vector}')
     # Using Scikit to predict every feature
     predict = c._classifier.predict(feature_vector)
     prob = np.max(c._classifier.predict_proba(feature_vector), axis=1)

@@ -3,7 +3,7 @@ import numpy as np
 from Functions import imgproc_func as imf
 
 
-def add_adaptive_frame(frame_depth, adaptive_obj):
+def add_adaptive_frame(frame_depth):
     # Generate area of interest from pipe depth data, by finding the end of the pipe
     aoi_end = cv2.inRange(frame_depth, int(np.max(frame_depth) - 100), int(np.max(frame_depth)))
     # Then the front of the pipe is extracted
@@ -16,8 +16,7 @@ def add_adaptive_frame(frame_depth, adaptive_obj):
     bg_mask = cv2.dilate(bg_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (41, 41)))
     # use the mask to generate an area of interest in the depth data
     fg_d_frame = cv2.bitwise_and(frame_depth, frame_depth, mask=bg_mask)
-    # start the adaptive thresholding
-    adaptive_obj.add_image(fg_d_frame)
+    return fg_d_frame
 
 
 def get_binary(bgr_frame, depth_mask, display_result=False):
