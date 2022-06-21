@@ -33,7 +33,7 @@ def custom_sobel(shape, axis):
     return k
 
 
-vid_path = r'C:\Users\Muku\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Exam videos\GR_3_aligned (1).avi'
+vid_path = r'C:\Users\mikip\OneDrive - Aalborg Universitet\P4 - GrisProjekt\Exam videos\GR_3_aligned (1).avi'
 
 depth_src = cv2.VideoCapture(vid_path)
 img_size = (1920, 1080)
@@ -122,9 +122,9 @@ while True:
     #orien = cv2.medianBlur(orien, 5) # there's a bunch of noise in this
 
     angled = orien - angle_copy
-    #for y, row in enumerate(angled):
-    #    for x, pixel in enumerate(row):
-    #        if angled[y, x] < 0: angled[y, x] += 360
+    for y, row in enumerate(angled):
+       for x, pixel in enumerate(row):
+           if angled[y, x] < 0: angled[y, x] += 360
 
     hsv = np.zeros((1920,1080,3), dtype='uint8')
     hsv[..., 0] = angled / 2. # H (in OpenCV between 0:180)
